@@ -6,6 +6,7 @@ node_modules/
 # Next.js build output
 web/.next/
 web/out/
+web/node_modules/
 
 # Environment files
 .env
