@@ -204,7 +204,7 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
 
     // Immediately clear canvas so no leftover image from previous step shows
     if (canvasRef.current) {
-      const ctx = canvasRef.current.getContext('2d');
+      const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
       if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     }
 
@@ -340,7 +340,7 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
     const canvas = canvasRef.current;
     if (!canvas || !img || stepIdRef.current !== forStepId) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     canvas.width = img.naturalWidth || img.width;
@@ -1336,7 +1336,7 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = cropW;
     tempCanvas.height = cropH;
-    const tempCtx = tempCanvas.getContext('2d');
+    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
     if (!tempCtx) return;
 
     tempCtx.drawImage(

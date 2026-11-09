@@ -30,7 +30,7 @@ export const Popup: React.FC = () => {
   const [stepCount, setStepCount] = useState(0);
   const [activeTabTitle, setActiveTabTitle] = useState('');
   const [recentWorkflows, setRecentWorkflows] = useState<Workflow[]>([]);
-  
+
   // Recording Mode: 'new' vs 'append'
   const [recordMode, setRecordMode] = useState<'new' | 'append'>('new');
   const [selectedCategory, setSelectedCategory] = useState('General');
@@ -46,6 +46,14 @@ export const Popup: React.FC = () => {
       }
     });
 
+    const messageListener = (msg: any) => {
+      if (msg.type === 'RECORDING_STATUS_CHANGED' && msg.payload) {
+        setStatus(msg.payload.status);
+        setStepCount(msg.payload.stepCount || 0);
+      }
+    };
+    chrome.runtime.onMessage.addListener(messageListener);
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
         setActiveTabTitle(tabs[0].title || 'Current Tab');
@@ -54,6 +62,10 @@ export const Popup: React.FC = () => {
     });
 
     loadWorkflows();
+
+    return () => {
+      chrome.runtime.onMessage.removeListener(messageListener);
+    };
   }, []);
 
   const loadWorkflows = async () => {
@@ -63,7 +75,7 @@ export const Popup: React.FC = () => {
 
       // Ambil daftar panduan dari Cloud Portal agar teman tim bisa langsung memilih & melanjutkannya
       try {
-        const res = await fetch('https://support.kanmoemployeeportal.com/api/workflows');
+        const res = await fetch('http://localhost:3000/api/workflows');
         if (res.ok) {
           const cloudList: Workflow[] = await res.json();
           if (Array.isArray(cloudList) && cloudList.length > 0) {
@@ -75,7 +87,7 @@ export const Popup: React.FC = () => {
             );
           }
         }
-      } catch {}
+      } catch { }
 
       setRecentWorkflows(list);
       if (list.length > 0 && !appendToWorkflowId) {
@@ -92,9 +104,9 @@ export const Popup: React.FC = () => {
       recordMode === 'append' && appendToWorkflowId
         ? { appendToId: appendToWorkflowId }
         : {
-            title: customTitle.trim() || activeTabTitle || 'Panduan Alur Baru',
-            category
-          };
+          title: customTitle.trim() || activeTabTitle || 'Panduan Alur Baru',
+          category
+        };
 
     chrome.runtime.sendMessage({ type: 'START_RECORDING', payload }, (res) => {
       if (chrome.runtime.lastError) {
@@ -123,6 +135,16 @@ export const Popup: React.FC = () => {
         window.close();
       }
     });
+  };
+
+  const discardRecording = () => {
+    if (confirm('Apakah Anda yakin ingin membatalkan rekaman ini? Semua langkah yang telah terekam akan dihapus.')) {
+      chrome.runtime.sendMessage({ type: 'DISCARD_RECORDING' }, () => {
+        setStatus('idle');
+        setStepCount(0);
+        window.close();
+      });
+    }
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -207,6 +229,13 @@ export const Popup: React.FC = () => {
                 )}
               </button>
             </div>
+
+            <button
+              onClick={discardRecording}
+              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-medium text-xs transition-all border border-rose-100 hover:border-rose-200"
+            >
+              <Trash2 size={13} /> Batalkan Rekaman
+            </button>
           </div>
         ) : (
           /* Ready to Record - Mode & Category Selector */
@@ -216,22 +245,20 @@ export const Popup: React.FC = () => {
               <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
                 <button
                   onClick={() => setRecordMode('new')}
-                  className={`flex-1 py-1.5 rounded-md transition-all ${
-                    recordMode === 'new'
+                  className={`flex-1 py-1.5 rounded-md transition-all ${recordMode === 'new'
                       ? 'bg-white text-slate-900 shadow-sm'
                       : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                    }`}
                 >
                   ● Rekam Baru
                 </button>
                 <button
                   onClick={() => setRecordMode('append')}
                   disabled={recentWorkflows.length === 0}
-                  className={`flex-1 py-1.5 rounded-md transition-all disabled:opacity-40 ${
-                    recordMode === 'append'
+                  className={`flex-1 py-1.5 rounded-md transition-all disabled:opacity-40 ${recordMode === 'append'
                       ? 'bg-white text-slate-900 shadow-sm'
                       : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                    }`}
                 >
                   ➕ Lanjut Sebelumnya
                 </button>

@@ -39,7 +39,7 @@ export const Editor: React.FC = () => {
   const [shareModalUrl, setShareModalUrl] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [apiUrl, setApiUrl] = useState<string>(() => {
-    return 'https://support.kanmoemployeeportal.com/api/workflows';
+    return 'http://localhost:3000/api/workflows';
   });
   const [editorName, setEditorName] = useState<string>(() => {
     return localStorage.getItem('stepflow_editor_name') || 'Tim Perusahaan';
@@ -60,7 +60,7 @@ export const Editor: React.FC = () => {
       let found = await getWorkflow(id);
       if (!found) {
         try {
-          const res = await fetch(`https://support.kanmoemployeeportal.com/api/workflows/${id}`);
+          const res = await fetch(`http://localhost:3000/api/workflows/${id}`);
           if (res.ok) {
             found = await res.json();
             if (found) {
@@ -194,7 +194,7 @@ export const Editor: React.FC = () => {
       return;
     }
 
-    let targetApiUrl = (apiUrl || 'https://support.kanmoemployeeportal.com/api/workflows').trim();
+    let targetApiUrl = (apiUrl || 'http://localhost:3000/api/workflows').trim();
     if (!targetApiUrl.includes('/api/workflows')) {
       targetApiUrl = targetApiUrl.replace(/\/+$/, '') + '/api/workflows';
     }
@@ -217,7 +217,7 @@ export const Editor: React.FC = () => {
         try {
           const errData = await res.json();
           if (errData && errData.error) errorMsg += ` - ${errData.error}`;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 

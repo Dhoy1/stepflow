@@ -19,6 +19,9 @@ async function ensureStateRestored() {
         recordingStatus = stored.recordingStatus;
         activeRecordingTabId = stored.activeRecordingTabId || null;
         currentWorkflow = (await db.workflows.get(stored.activeWorkflowId)) || null;
+        if (recordingStatus !== 'idle') {
+          await broadcastStatus();
+        }
       }
     } catch (e) {
       console.warn('Failed to restore SW state:', e);
@@ -43,8 +46,23 @@ async function persistState() {
   }
 }
 
-// Helper to broadcast state to all tabs or active tab
+// Helper to broadcast state to all tabs or active tab & update toolbar badge
 async function broadcastStatus() {
+  try {
+    if (recordingStatus === 'recording') {
+      const count = currentWorkflow ? currentWorkflow.steps.length : 0;
+      await chrome.action.setBadgeText({ text: count > 0 ? String(count) : 'REC' });
+      await chrome.action.setBadgeBackgroundColor({ color: '#FF5C35' });
+    } else if (recordingStatus === 'paused') {
+      await chrome.action.setBadgeText({ text: 'PAUSE' });
+      await chrome.action.setBadgeBackgroundColor({ color: '#64748B' });
+    } else {
+      await chrome.action.setBadgeText({ text: '' });
+    }
+  } catch (err) {
+    // Toolbar action API not available or tab query error
+  }
+
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
     if (tab.id) {
@@ -76,7 +94,7 @@ async function safeCaptureTab(windowId?: number): Promise<string> {
   if (activeCapturePromise) {
     try {
       return await activeCapturePromise;
-    } catch {}
+    } catch { }
   }
 
   // Ensure at least 80ms spacing to prevent MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND
@@ -152,7 +170,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
           let existing = await db.workflows.get(message.payload.appendToId);
           if (!existing) {
             try {
-              const res = await fetch(`https://support.kanmoemployeeportal.com/api/workflows/${message.payload.appendToId}`);
+              const res = await fetch(`http://localhost:3000/api/workflows/${message.payload.appendToId}`);
               if (res.ok) {
                 existing = await res.json();
                 if (existing) {
@@ -198,7 +216,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
             await chrome.scripting.insertCSS({
               target: { tabId: activeRecordingTabId },
               files: ['content.css']
-            }).catch(() => {});
+            }).catch(() => { });
           } catch (injectErr) {
             console.warn('Could not inject content script:', injectErr);
           }
@@ -212,7 +230,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
             stepCount: currentWorkflow.steps.length,
             workflowTitle: currentWorkflow.title
           }
-        }).catch(() => {});
+        }).catch(() => { });
 
         await broadcastStatus();
         return { status: recordingStatus, workflowId: currentWorkflow.id };
@@ -240,7 +258,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
             promise: capturePromise,
             timestamp: Date.now()
           };
-          capturePromise.catch(() => {});
+          capturePromise.catch(() => { });
         }
         return { success: true };
       }
@@ -257,7 +275,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
           if (latestPreCapture && (now - latestPreCapture.timestamp) < 1500) {
             try {
               screenshotDataUrl = await latestPreCapture.promise;
-            } catch {}
+            } catch { }
           }
           latestPreCapture = null;
 
@@ -266,7 +284,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
             const windowId = sender.tab?.windowId;
             screenshotDataUrl = await safeCaptureTab(windowId);
           }
-          
+
           const meta = message.payload;
           const dpr = meta.targetElement?.viewport?.devicePixelRatio || 1;
           const rect = meta.targetElement?.rect;
@@ -361,7 +379,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
 
         // 2. Try fetching from Cloud API (Hostinger)
         try {
-          const res = await fetch(`https://support.kanmoemployeeportal.com/api/workflows/${id}`);
+          const res = await fetch(`http://localhost:3000/api/workflows/${id}`);
           if (res.ok) {
             wf = await res.json();
             return { workflow: wf };
@@ -377,7 +395,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
             wf = await localRes.json();
             return { workflow: wf };
           }
-        } catch {}
+        } catch { }
 
         return { error: 'Workflow not found' };
       }
