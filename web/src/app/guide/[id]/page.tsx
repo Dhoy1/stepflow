@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { getWorkflowById } from '@/lib/serverStore';
 import { GuideViewer } from './GuideViewer';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const workflow = await getWorkflowById(params.id);
   if (!workflow) {

@@ -18,12 +18,13 @@ import {
   Sparkles,
   Edit,
   Lock,
-  Globe
+  Globe,
+  CheckCircle2
 } from 'lucide-react';
 import { exportToWord } from '@/lib/exporters/docxExporter';
 import { exportToPptx } from '@/lib/exporters/pptxExporter';
 import { exportToPdf } from '@/lib/exporters/pdfExporter';
-import { isEditorAuthenticated } from '@/lib/auth';
+import { isEditorAuthenticated, getActiveTeam, getStoredEditorName } from '@/lib/auth';
 import { PinModal } from '@/components/PinModal';
 import type { Workflow } from '@/types';
 
@@ -31,14 +32,26 @@ interface GuideViewerProps {
   workflow: Workflow;
 }
 
-export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
+export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkflow }) => {
   const router = useRouter();
+  const [workflow, setWorkflow] = useState<Workflow>(initialWorkflow);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'scroll' | 'interactive'>('scroll');
   const [isExporting, setIsExporting] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [isAuth, setIsAuth] = useState(false);
+
+  // Inline Subtitle / Description Editing
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+  const [descInput, setDescInput] = useState(initialWorkflow.description || '');
+  const [isSavingDesc, setIsSavingDesc] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'editor' | 'inlineDesc' | null>(null);
+
+  useEffect(() => {
+    setWorkflow(initialWorkflow);
+    setDescInput(initialWorkflow.description || '');
+  }, [initialWorkflow]);
 
   useEffect(() => {
     setIsAuth(isEditorAuthenticated());
@@ -48,6 +61,17 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
     if (isEditorAuthenticated()) {
       router.push(`/guide/${workflow.id}/edit`);
     } else {
+      setPendingAction('editor');
+      setShowPinModal(true);
+    }
+  };
+
+  const handleStartEditDesc = () => {
+    if (isEditorAuthenticated()) {
+      setDescInput(workflow.description || '');
+      setIsEditingDesc(true);
+    } else {
+      setPendingAction('inlineDesc');
       setShowPinModal(true);
     }
   };
@@ -55,7 +79,57 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
   const handlePinSuccess = () => {
     setShowPinModal(false);
     setIsAuth(true);
-    router.push(`/guide/${workflow.id}/edit`);
+    if (pendingAction === 'inlineDesc') {
+      setIsEditingDesc(true);
+      setPendingAction(null);
+    } else {
+      router.push(`/guide/${workflow.id}/edit`);
+    }
+  };
+
+  const handleSaveDescription = async () => {
+    setIsSavingDesc(true);
+    const activeTeam = getActiveTeam();
+    const editor = getStoredEditorName();
+    let authorSignature = workflow.lastEditedBy || '';
+    if (editor && activeTeam) {
+      if (editor.trim().toLowerCase() === activeTeam.name.trim().toLowerCase()) {
+        authorSignature = editor.trim();
+      } else {
+        authorSignature = `${editor.trim()} (${activeTeam.name})`;
+      }
+    } else if (activeTeam) {
+      authorSignature = activeTeam.name;
+    } else if (editor) {
+      authorSignature = editor.trim();
+    }
+
+    const updatedWorkflow: Workflow = {
+      ...workflow,
+      description: descInput.trim(),
+      lastEditedBy: authorSignature,
+      updatedAt: Date.now()
+    };
+
+    try {
+      const res = await fetch(`/api/workflows/${workflow.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedWorkflow)
+      });
+      if (res.ok) {
+        setWorkflow(updatedWorkflow);
+        setIsEditingDesc(false);
+        router.refresh();
+      } else {
+        alert('Gagal menyimpan deskripsi panduan ke server.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan saat menyimpan deskripsi.');
+    } finally {
+      setIsSavingDesc(false);
+    }
   };
 
   const handleCopyLink = () => {
@@ -108,21 +182,19 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
           <div className="hidden md:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
             <button
               onClick={() => setViewMode('scroll')}
-              className={`px-3 py-1.5 rounded-md font-medium transition-all ${
-                viewMode === 'scroll'
+              className={`px-3 py-1.5 rounded-md font-medium transition-all ${viewMode === 'scroll'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900'
-              }`}
+                }`}
             >
               Mode Gulir
             </button>
             <button
               onClick={() => setViewMode('interactive')}
-              className={`px-3 py-1.5 rounded-md font-medium transition-all ${
-                viewMode === 'interactive'
+              className={`px-3 py-1.5 rounded-md font-medium transition-all ${viewMode === 'interactive'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900'
-              }`}
+                }`}
             >
               Mode Interaktif
             </button>
@@ -131,11 +203,11 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
           {/* Edit Guide Button (Protected by PIN) */}
           <button
             onClick={handleEditClick}
-            title="Edit panduan ini (Perlu PIN Tim)"
+            title="Edit judul, keterangan langkah, atau gambar (Perlu PIN Tim)"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-[#FF5C35] transition-all shadow-xs"
           >
             <Edit size={14} />
-            <span>Edit</span>
+            <span>Edit Panduan & Teks</span>
           </button>
 
           {/* Copy Share Link */}
@@ -206,10 +278,63 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
             {workflow.title}
           </h1>
 
-          {workflow.description && (
-            <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-              {workflow.description}
-            </p>
+          {/* Subtitle / Description Section with Edit Capability */}
+          {isEditingDesc ? (
+            <div className="my-1 p-3.5 bg-orange-50/70 border border-orange-200 rounded-xl flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-orange-950 flex items-center gap-1.5">
+                  <Edit size={13} className="text-[#FF5C35]" /> Edit Keterangan / Subtitle Panduan:
+                </span>
+                <span className="text-[11px] text-slate-500 hidden sm:inline">
+                  Teks terbaru akan otomatis tercetak di PDF, PPT, dan Word
+                </span>
+              </div>
+              <textarea
+                value={descInput}
+                onChange={(e) => setDescInput(e.target.value)}
+                placeholder="Tuliskan keterangan / subtitle panduan di sini..."
+                rows={2}
+                className="w-full text-sm text-slate-800 bg-white border border-slate-300 focus:border-[#FF5C35] focus:ring-1 focus:ring-[#FF5C35] rounded-lg p-2.5 outline-none font-medium transition-all resize-y shadow-xs"
+              />
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDescInput(workflow.description || '');
+                    setIsEditingDesc(false);
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDescription}
+                  disabled={isSavingDesc}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FF5C35] hover:bg-[#E54A24] text-white text-xs font-bold rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                >
+                  {isSavingDesc ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                  <span>Simpan Keterangan</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="group flex items-start justify-between gap-3">
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed flex-1">
+                {workflow.description || (
+                  <span className="italic text-slate-400">Belum ada keterangan / subtitle.</span>
+                )}
+              </p>
+              <button
+                type="button"
+                onClick={handleStartEditDesc}
+                className="opacity-75 group-hover:opacity-100 hover:text-[#FF5C35] text-slate-400 px-2 py-1 rounded-md hover:bg-orange-50 border border-transparent hover:border-orange-200 transition-all flex items-center gap-1.5 text-xs font-semibold shrink-0"
+                title="Edit teks subtitle ini"
+              >
+                <Edit size={13} />
+                <span>Edit Subtitle</span>
+              </button>
+            </div>
           )}
 
           {workflow.targetUrl && (
@@ -243,13 +368,24 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
               >
                 {/* Step Header */}
                 <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-7 h-7 rounded-full bg-[#FF5C35] text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                      {idx + 1}
-                    </span>
-                    <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                      {step.title}
-                    </h2>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-7 h-7 rounded-full bg-[#FF5C35] text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                        {idx + 1}
+                      </span>
+                      <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                        {step.title}
+                      </h2>
+                    </div>
+                    {isAuth && (
+                      <button
+                        onClick={handleEditClick}
+                        className="text-xs text-slate-400 hover:text-orange-600 flex items-center gap-1 font-semibold px-2 py-1 rounded-md hover:bg-orange-50 transition-colors"
+                        title="Edit teks instruksi atau gambar langkah ini"
+                      >
+                        <Edit size={12} /> Edit Teks
+                      </button>
+                    )}
                   </div>
 
                   {step.description && (
@@ -261,13 +397,12 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
                   {/* Callout */}
                   {step.callout && step.callout.type !== 'none' && step.callout.text && (
                     <div
-                      className={`ml-9 mt-1 p-3 rounded-xl border text-xs font-medium flex items-start gap-2 ${
-                        step.callout.type === 'tip'
+                      className={`ml-9 mt-1 p-3 rounded-xl border text-xs font-medium flex items-start gap-2 ${step.callout.type === 'tip'
                           ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                           : step.callout.type === 'warning'
-                          ? 'bg-amber-50 border-amber-200 text-amber-800'
-                          : 'bg-blue-50 border-blue-200 text-blue-800'
-                      }`}
+                            ? 'bg-amber-50 border-amber-200 text-amber-800'
+                            : 'bg-blue-50 border-blue-200 text-blue-800'
+                        }`}
                     >
                       <Sparkles size={14} className="flex-shrink-0 mt-0.5" />
                       <span>{step.callout.text}</span>
@@ -357,9 +492,8 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
                   <button
                     key={i}
                     onClick={() => setActiveStepIndex(i)}
-                    className={`h-2 rounded-full transition-all ${
-                      i === activeStepIndex ? 'w-6 bg-[#FF5C35]' : 'w-2 bg-slate-200 hover:bg-slate-300'
-                    }`}
+                    className={`h-2 rounded-full transition-all ${i === activeStepIndex ? 'w-6 bg-[#FF5C35]' : 'w-2 bg-slate-200 hover:bg-slate-300'
+                      }`}
                   />
                 ))}
               </div>
@@ -368,11 +502,10 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow }) => {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="mt-12 py-6 border-t border-slate-200 bg-white text-center text-xs text-slate-400">
-        Dibuat secara otomatis dengan <span className="font-semibold text-slate-700">StepFlow</span> •
-        Tutorial dan Panduan Interaktif
+        Platform Dokumentasi Internal oleh <span className="font-semibold text-slate-700">StepFlow</span> • Copyright © {new Date().getFullYear()} Kanmo Group
       </footer>
+
 
       {/* Team PIN Modal for Editor Access */}
       <PinModal

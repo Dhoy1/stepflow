@@ -21,13 +21,14 @@ import {
   Loader2,
   Tag,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from 'lucide-react';
-import { isEditorAuthenticated, logoutEditor, getStoredEditorName } from '@/lib/auth';
+import { isEditorAuthenticated, logoutEditor, getStoredEditorName, getActiveTeam, type TeamProfile } from '@/lib/auth';
 import { PinModal } from '@/components/PinModal';
 import { StepCanvas } from '@/components/StepCanvas';
 import type { Workflow, Step } from '@/types';
-import { ShieldCheck, History } from 'lucide-react';
+import { ShieldCheck, History, Unlock } from 'lucide-react';
 
 interface WebEditorProps {
   initialWorkflow: Workflow;
@@ -49,17 +50,20 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [showPinModal, setShowPinModal] = useState(false);
   const [isAuth, setIsAuth] = useState(false);
+  const [activeTeam, setActiveTeam] = useState<TeamProfile | null>(null);
 
   useEffect(() => {
     if (!isEditorAuthenticated()) {
       setShowPinModal(true);
     } else {
       setIsAuth(true);
+      setActiveTeam(getActiveTeam());
     }
   }, []);
 
-  const handlePinSuccess = () => {
+  const handlePinSuccess = (team?: TeamProfile) => {
     setIsAuth(true);
+    setActiveTeam(team || getActiveTeam());
     setShowPinModal(false);
   };
 
@@ -74,8 +78,21 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
 
   // Save changes to Cloud (API)
   const handleSaveToCloud = async (wfToSave?: Workflow) => {
-    const editor = getStoredEditorName() || 'Tim Perusahaan';
-    const target = { ...(wfToSave || workflow), lastEditedBy: editor, updatedAt: Date.now() };
+    const editor = getStoredEditorName();
+    const team = activeTeam || getActiveTeam();
+
+    let authorSignature = 'Tim Perusahaan';
+    if (editor && team) {
+      authorSignature = (editor.trim().toLowerCase() === team.name.trim().toLowerCase())
+        ? editor.trim()
+        : `${editor.trim()} (${team.name.trim()})`;
+    } else if (team) {
+      authorSignature = team.name.trim();
+    } else if (editor) {
+      authorSignature = editor.trim();
+    }
+
+    const target = { ...(wfToSave || workflow), lastEditedBy: authorSignature, updatedAt: Date.now() };
     try {
       setSaveStatus('saving');
       const res = await fetch(`/api/workflows/${target.id}`, {
@@ -88,6 +105,7 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
       if (res.ok) {
         setSaveStatus('saved');
         setWorkflow(target);
+        router.refresh();
       } else {
         alert('Gagal menyimpan perubahan ke server.');
         setSaveStatus('unsaved');
@@ -229,6 +247,14 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
+          {/* Active Team Badge */}
+          {activeTeam && (
+            <div className="hidden md:flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <Unlock size={12} className="text-emerald-600" />
+              <span>{activeTeam.name}</span>
+            </div>
+          )}
+
           {/* Internal Last Edited Badge */}
           {workflow.lastEditedBy && (
             <div className="hidden xl:flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
@@ -302,8 +328,22 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
         </div>
       </nav>
 
+      {/* Sub Bar: Guide Description / Subtitle */}
+      <div className="bg-slate-50 border-b border-slate-200 px-4 sm:px-6 py-2 flex items-center gap-2 text-xs flex-shrink-0 z-30 shadow-xs">
+        <span className="font-bold text-slate-600 shrink-0 flex items-center gap-1.5">
+          <FileText size={13} className="text-[#FF5C35]" /> Subtitle / Deskripsi:
+        </span>
+        <input
+          type="text"
+          value={workflow.description || ''}
+          onChange={(e) => handleUpdateWorkflow({ description: e.target.value })}
+          placeholder="Tuliskan keterangan / subtitle panduan di sini (otomatis tersinkronisasi ke PDF, PPT, dan Word)..."
+          className="flex-1 bg-white hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-[#FF5C35] focus:ring-1 focus:ring-[#FF5C35] rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none transition-all font-medium"
+        />
+      </div>
+
       {/* Main Workspace Layout */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden" style={{ height: 'calc(100vh - 53px)' }}>
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Left Sidebar: Step Thumbnails */}
         <div className="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 z-10 shadow-sm">
           <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">

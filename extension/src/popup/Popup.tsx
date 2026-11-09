@@ -14,6 +14,7 @@ import {
   FolderPlus
 } from 'lucide-react';
 import { getAllWorkflows, deleteWorkflow } from '../lib/db';
+import { DEFAULT_WORKFLOWS_API } from '../lib/config';
 import type { Workflow, RecordingStatus } from '../types';
 
 const DEFAULT_CATEGORIES = [
@@ -75,7 +76,7 @@ export const Popup: React.FC = () => {
 
       // Ambil daftar panduan dari Cloud Portal agar teman tim bisa langsung memilih & melanjutkannya
       try {
-        const res = await fetch('http://localhost:3000/api/workflows');
+        const res = await fetch(DEFAULT_WORKFLOWS_API);
         if (res.ok) {
           const cloudList: Workflow[] = await res.json();
           if (Array.isArray(cloudList) && cloudList.length > 0) {

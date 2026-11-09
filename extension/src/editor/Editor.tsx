@@ -23,6 +23,7 @@ import {
   User
 } from 'lucide-react';
 import { db, getWorkflow, saveWorkflow, getAllWorkflows } from '../lib/db';
+import { DEFAULT_WORKFLOWS_API } from '../lib/config';
 import { createDemoWorkflow } from '../lib/demoData';
 import { exportToWord } from '../lib/exporters/docxExporter';
 import { exportToPptx } from '../lib/exporters/pptxExporter';
@@ -39,7 +40,9 @@ export const Editor: React.FC = () => {
   const [shareModalUrl, setShareModalUrl] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [apiUrl, setApiUrl] = useState<string>(() => {
-    return 'http://localhost:3000/api/workflows';
+    const saved = localStorage.getItem('stepflow_api_url');
+    if (saved && !saved.includes('localhost:3000')) return saved;
+    return DEFAULT_WORKFLOWS_API;
   });
   const [editorName, setEditorName] = useState<string>(() => {
     return localStorage.getItem('stepflow_editor_name') || 'Tim Perusahaan';
@@ -60,7 +63,7 @@ export const Editor: React.FC = () => {
       let found = await getWorkflow(id);
       if (!found) {
         try {
-          const res = await fetch(`http://localhost:3000/api/workflows/${id}`);
+          const res = await fetch(`${DEFAULT_WORKFLOWS_API}/${id}`);
           if (res.ok) {
             found = await res.json();
             if (found) {
@@ -194,7 +197,7 @@ export const Editor: React.FC = () => {
       return;
     }
 
-    let targetApiUrl = (apiUrl || 'http://localhost:3000/api/workflows').trim();
+    let targetApiUrl = (apiUrl || DEFAULT_WORKFLOWS_API).trim();
     if (!targetApiUrl.includes('/api/workflows')) {
       targetApiUrl = targetApiUrl.replace(/\/+$/, '') + '/api/workflows';
     }
@@ -313,6 +316,15 @@ export const Editor: React.FC = () => {
                 title="Klik untuk mengubah kategori"
                 className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 hover:border-orange-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 max-w-[140px]"
                 placeholder="Kategori..."
+              />
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <input
+                type="text"
+                value={workflow.description || ''}
+                onChange={(e) => handleUpdateWorkflow({ description: e.target.value })}
+                className="text-xs text-slate-500 hover:text-slate-700 bg-transparent hover:bg-slate-50 focus:bg-white border border-transparent focus:border-slate-300 focus:ring-1 focus:ring-orange-400 rounded px-1.5 py-0.5 -ml-1.5 transition-all outline-none w-80 sm:w-96 truncate"
+                placeholder="Tulis subtitle / deskripsi panduan di sini..."
               />
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">

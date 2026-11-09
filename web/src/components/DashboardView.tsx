@@ -17,7 +17,7 @@ import {
   Unlock,
   Edit
 } from 'lucide-react';
-import { isEditorAuthenticated, logoutEditor } from '@/lib/auth';
+import { isEditorAuthenticated, logoutEditor, getActiveTeam, getStoredEditorName, type TeamProfile } from '@/lib/auth';
 import { PinModal } from './PinModal';
 import type { Workflow } from '@/types';
 
@@ -30,10 +30,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAuth, setIsAuth] = useState(false);
+  const [activeTeam, setActiveTeam] = useState<TeamProfile | null>(null);
+  const [editorName, setEditorName] = useState<string>('');
   const [showPinModal, setShowPinModal] = useState(false);
 
   useEffect(() => {
-    setIsAuth(isEditorAuthenticated());
+    const authStatus = isEditorAuthenticated();
+    setIsAuth(authStatus);
+    if (authStatus) {
+      setActiveTeam(getActiveTeam());
+      setEditorName(getStoredEditorName());
+    }
   }, []);
 
   // Extract all unique categories
@@ -85,21 +92,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
           {/* Team PIN Access */}
           {isAuth ? (
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1.5 rounded-xl border border-emerald-200">
-                <Unlock size={13} /> Tim Editor Aktif
+              <span
+                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border shadow-xs ${activeTeam?.badgeColor === 'blue'
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  : activeTeam?.badgeColor === 'purple'
+                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}
+              >
+                <Unlock size={13} />
+                <span>{activeTeam ? activeTeam.name : 'Tim Editor Aktif'}</span>
+                {editorName && (
+                  <span className="font-medium text-slate-500 ml-0.5">• {editorName}</span>
+                )}
               </span>
               <button
                 onClick={() => {
                   logoutEditor();
                   setIsAuth(false);
+                  setActiveTeam(null);
+                  setEditorName('');
                 }}
-                className="text-xs text-slate-400 hover:text-rose-500 font-semibold px-2 py-1"
+                className="text-xs text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg font-semibold px-2 py-1 transition-all"
+                title="Kunci Akses Editor"
               >
                 Kunci
               </button>
             </div>
           ) : (
             <button
+              type="button"
               onClick={() => setShowPinModal(true)}
               className="flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl border border-slate-200 transition-colors shadow-xs"
             >
@@ -117,11 +139,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
             <span>Pusat Dokumentasi & Onboarding Tim</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Semua panduan alur website dalam satu tempat.
+            Semua panduan alur website dalam satu tempat
+            <br />
+            "KANMOGROUP"
           </h2>
-          <p className="text-sm sm:text-base text-slate-500">
-            Dikelompokkan berdasarkan kategori divisi atau sistem aplikasi agar mudah dicari oleh rekan kerja.
-          </p>
         </div>
       </header>
 
@@ -135,11 +156,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
-                  selectedCategory === cat
-                    ? 'bg-[#FF5C35] text-white shadow-sm'
-                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                }`}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${selectedCategory === cat
+                  ? 'bg-[#FF5C35] text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
               >
                 {cat}
               </button>
@@ -246,16 +266,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400">
-        StepFlow • Solusi Dokumentasi & Pelatihan Berbasis Web & Ekstensi Browser
+        © 2026 StepFlow by Kanmo Group. All rights reserved.
       </footer>
 
       {/* Team PIN Modal */}
       <PinModal
         isOpen={showPinModal}
         onClose={() => setShowPinModal(false)}
-        onSuccess={() => {
+        onSuccess={(team) => {
           setShowPinModal(false);
           setIsAuth(true);
+          setActiveTeam(team || getActiveTeam());
+          setEditorName(getStoredEditorName());
         }}
       />
     </div>

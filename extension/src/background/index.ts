@@ -1,4 +1,5 @@
 import { db, saveWorkflow } from '../lib/db';
+import { DEFAULT_WORKFLOWS_API } from '../lib/config';
 import type { Workflow, Step, RecordingStatus, ExtensionMessage } from '../types';
 
 let currentWorkflow: Workflow | null = null;
@@ -170,7 +171,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
           let existing = await db.workflows.get(message.payload.appendToId);
           if (!existing) {
             try {
-              const res = await fetch(`http://localhost:3000/api/workflows/${message.payload.appendToId}`);
+              const res = await fetch(`${DEFAULT_WORKFLOWS_API}/${message.payload.appendToId}`);
               if (res.ok) {
                 existing = await res.json();
                 if (existing) {
@@ -379,7 +380,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
 
         // 2. Try fetching from Cloud API (Hostinger)
         try {
-          const res = await fetch(`http://localhost:3000/api/workflows/${id}`);
+          const res = await fetch(`${DEFAULT_WORKFLOWS_API}/${id}`);
           if (res.ok) {
             wf = await res.json();
             return { workflow: wf };
