@@ -106,20 +106,22 @@ function updateDock() {
     dockReactRoot = ReactDOM.createRoot(mountPoint);
   }
 
-  dockReactRoot.render(
-    <FloatingDock
-      status={currentStatus}
-      stepCount={currentStepCount}
-      onPause={() => safeRuntimeMessage({ type: 'PAUSE_RECORDING' })}
-      onResume={() => safeRuntimeMessage({ type: 'RESUME_RECORDING' })}
-      onComplete={() => safeRuntimeMessage({ type: 'STOP_RECORDING' })}
-      onDiscard={() => {
-        if (confirm('Apakah Anda yakin ingin membatalkan rekaman ini?')) {
-          safeRuntimeMessage({ type: 'DISCARD_RECORDING' });
-        }
-      }}
-    />
-  );
+  if (dockReactRoot) {
+    dockReactRoot.render(
+      <FloatingDock
+        status={currentStatus}
+        stepCount={currentStepCount}
+        onPause={() => safeRuntimeMessage({ type: 'PAUSE_RECORDING' })}
+        onResume={() => safeRuntimeMessage({ type: 'RESUME_RECORDING' })}
+        onComplete={() => safeRuntimeMessage({ type: 'STOP_RECORDING' })}
+        onDiscard={() => {
+          if (confirm('Apakah Anda yakin ingin membatalkan rekaman ini?')) {
+            safeRuntimeMessage({ type: 'DISCARD_RECORDING' });
+          }
+        }}
+      />
+    );
+  }
 }
 
 // Sembunyikan dock sebelum screenshot diambil agar gambar 100% bersih

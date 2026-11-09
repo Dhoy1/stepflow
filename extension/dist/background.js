@@ -4689,17 +4689,17 @@ Silakan buka tab website biasa (misal: localhost:3000, google.com, atau sistem k
       let z = await rt.workflows.get(M);
       if (z) return { workflow: z };
       try {
-        const N = await fetch(`http://localhost:3000/api/workflows/${M}`);
-        if (N.ok)
-          return z = await N.json(), { workflow: z };
-      } catch {
-      }
-      try {
         const N = await fetch(`https://support.kanmoemployeeportal.com/api/workflows/${M}`);
         if (N.ok)
           return z = await N.json(), { workflow: z };
       } catch (N) {
         console.warn("Could not fetch workflow from cloud API:", N);
+      }
+      try {
+        const N = await fetch(`http://localhost:3000/api/workflows/${M}`);
+        if (N.ok)
+          return z = await N.json(), { workflow: z };
+      } catch {
       }
       return { error: "Workflow not found" };
     }

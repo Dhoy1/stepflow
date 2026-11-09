@@ -359,16 +359,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
         let wf = await db.workflows.get(id);
         if (wf) return { workflow: wf };
 
-        // 2. Try fetching from Local API (localhost:3000)
-        try {
-          const localRes = await fetch(`http://localhost:3000/api/workflows/${id}`);
-          if (localRes.ok) {
-            wf = await localRes.json();
-            return { workflow: wf };
-          }
-        } catch {}
-
-        // 3. Fallback to Cloud API (Hostinger)
+        // 2. Try fetching from Cloud API (Hostinger)
         try {
           const res = await fetch(`https://support.kanmoemployeeportal.com/api/workflows/${id}`);
           if (res.ok) {
@@ -378,6 +369,15 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
         } catch (e) {
           console.warn('Could not fetch workflow from cloud API:', e);
         }
+
+        // 3. Fallback to Local API
+        try {
+          const localRes = await fetch(`http://localhost:3000/api/workflows/${id}`);
+          if (localRes.ok) {
+            wf = await localRes.json();
+            return { workflow: wf };
+          }
+        } catch {}
 
         return { error: 'Workflow not found' };
       }

@@ -30,8 +30,18 @@ export interface BlurRegion extends BoundingBox {
 }
 
 export interface HighlightConfig extends BoundingBox {
+  id?: string;
   color: string;
   style: 'border' | 'spotlight' | 'dot';
+}
+
+export interface NumberBadge {
+  id: string;
+  x: number;
+  y: number;
+  number: number;
+  color?: string;
+  size?: number;
 }
 
 export interface StepCallout {
@@ -51,7 +61,7 @@ export interface ArrowAnnotation {
 export interface Step {
   id: string;
   order: number;
-  actionType: 'click' | 'input' | 'change' | 'navigation' | 'manual';
+  actionType: 'click' | 'input' | 'change' | 'select' | 'navigation' | 'manual' | string;
   title: string;
   description: string;
   url: string;
@@ -61,6 +71,8 @@ export interface Step {
   originalScreenshot?: string;
   annotatedScreenshot?: string;
   highlight?: HighlightConfig;
+  highlights?: HighlightConfig[];
+  numberBadges?: NumberBadge[];
   blurRegions?: BlurRegion[];
   arrows?: ArrowAnnotation[];
   callout?: StepCallout;

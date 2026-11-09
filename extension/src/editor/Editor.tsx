@@ -164,15 +164,22 @@ export const Editor: React.FC = () => {
   // Add manual step
   const addManualStep = () => {
     if (!workflow) return;
+    const newStepIndex = workflow.steps.length + 1;
     const newStep: Step = {
       id: 'step_manual_' + Date.now(),
-      order: workflow.steps.length + 1,
+      order: newStepIndex,
       actionType: 'manual',
-      title: 'Additional Step',
-      description: 'Write specific instructions or notes for this step.',
-      url: workflow.targetUrl,
-      pageTitle: workflow.title,
-      screenshot: workflow.steps[selectedStepIndex]?.screenshot || '',
+      title: `Langkah ${newStepIndex}`,
+      description: 'Tuliskan instruksi atau catatan untuk langkah ini.',
+      url: workflow.targetUrl || '',
+      pageTitle: workflow.title || '',
+      screenshot: '', // Kosong agar user bisa upload atau paste gambar
+      originalScreenshot: '',
+      annotatedScreenshot: '',
+      highlights: [],
+      numberBadges: [],
+      arrows: [],
+      blurRegions: [],
       callout: { type: 'none', text: '' }
     };
     const newSteps = [...workflow.steps, newStep];
@@ -487,11 +494,31 @@ export const Editor: React.FC = () => {
               {/* Step Title & Instruction Input */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="bg-orange-500 text-white font-bold text-xs px-2.5 py-1 rounded-full">
                       Langkah {selectedStepIndex + 1} dari {workflow.steps.length}
                     </span>
-                    <span className="text-xs text-slate-400">| Tipe Aksi: {currentStep.actionType}</span>
+                    <span className="text-xs text-slate-300">|</span>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs font-semibold text-slate-500">Tipe Aksi:</label>
+                      <input
+                        type="text"
+                        list="actionTypesList"
+                        value={currentStep.actionType || ''}
+                        onChange={(e) => handleUpdateStepById(currentStep.id, { actionType: e.target.value })}
+                        placeholder="click, input..."
+                        className="text-xs font-semibold text-slate-800 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-orange-500 rounded-lg px-2.5 py-1 w-28 focus:w-36 transition-all focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        title="Klik untuk memilih atau ketik tipe aksi manual"
+                      />
+                      <datalist id="actionTypesList">
+                        <option value="click" label="Click (Klik)" />
+                        <option value="input" label="Input (Ketik)" />
+                        <option value="change" label="Change (Ubah Nilai)" />
+                        <option value="select" label="Select (Pilih Opsi)" />
+                        <option value="navigation" label="Navigation (Buka URL)" />
+                        <option value="manual" label="Manual (Aksi Manual)" />
+                      </datalist>
+                    </div>
                   </div>
 
                   {/* Next / Prev Navigation */}
