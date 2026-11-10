@@ -1,4 +1,4 @@
-# 🚀 Panduan Lengkap & Walkthrough: StepFlow (Tango Clone)
+# 🚀 Panduan Lengkap & Walkthrough: StepFlow Workflow Recorder
 
 Selamat datang di **StepFlow**! Aplikasi ini dirancang untuk merekam alur kerja website secara otomatis, menghasilkan panduan langkah demi langkah dengan instruksi otomatis berbahasa Inggris (*English Heuristics*), dan mengekspor hasilnya ke format **Word (.docx)**, **PowerPoint (.pptx)**, **PDF (.pdf)**, serta tautan **Web Publik Interaktif** yang bisa dibuka oleh audiens dan dikolaborasikan bersama tim.
 
@@ -8,10 +8,9 @@ Selamat datang di **StepFlow**! Aplikasi ini dirancang untuk merekam alur kerja 
 
 | Item | Lokasi / Tautan | Keterangan |
 | :--- | :--- | :--- |
-| **Paket Ekstensi Siap Pakai** | `c:\laragon\www\Record\stepflow-extension.zip` | Kirim file zip ini ke teman/tim Anda untuk di-install langsung tanpa perlu Node/Laragon. |
-| **Folder Ekstensi (Source)** | `c:\laragon\www\Record\extension\dist` | Folder hasil build jika ingin load unpacked langsung di laptop Anda. |
-| **Web Hub & Studio** | `http://localhost:3000` (atau URL Vercel Anda) | Portal koleksi tutorial, viewer publik, dan Web Studio Editor. |
-| **Repositori GitHub** | `https://github.com/Dhoy1/StepFlow.git` | Terkoneksi otomatis dengan Vercel untuk deployment otomatis saat push. |
+| **Paket Ekstensi Siap Pakai** | `Record\stepflow-extension.zip` | Kirim file zip ini ke teman/tim Anda untuk di-install langsung tanpa perlu Node/Laragon. |
+| **Folder Ekstensi (Source)** | `\Record\extension\dist` | Folder hasil build jika ingin load unpacked langsung di laptop Anda. |
+| **Web Hub & Studio** | `http://localhost` (atau URL Vercel Anda) | Portal koleksi tutorial, viewer publik, dan Web Studio Editor. |
 
 ---
 

@@ -171,7 +171,7 @@ export const Popup: React.FC = () => {
           </div>
           <div>
             <h1 className="text-sm font-bold tracking-tight text-slate-900 leading-tight">StepFlow</h1>
-            <p className="text-[10px] text-slate-400 font-medium">Tango Workflow Recorder</p>
+            <p className="text-[10px] text-slate-400 font-medium">Kanmo Workflow Recorder</p>
           </div>
         </div>
         <button
@@ -247,8 +247,8 @@ export const Popup: React.FC = () => {
                 <button
                   onClick={() => setRecordMode('new')}
                   className={`flex-1 py-1.5 rounded-md transition-all ${recordMode === 'new'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
                     }`}
                 >
                   ● Rekam Baru
@@ -257,8 +257,8 @@ export const Popup: React.FC = () => {
                   onClick={() => setRecordMode('append')}
                   disabled={recentWorkflows.length === 0}
                   className={`flex-1 py-1.5 rounded-md transition-all disabled:opacity-40 ${recordMode === 'append'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
                     }`}
                 >
                   ➕ Lanjut Sebelumnya

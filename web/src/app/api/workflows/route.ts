@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
     const result = await saveWorkflowToCloud(body);
     const host = req.headers.get('host') || 'localhost:3000';
     const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-    const shareUrl = `${protocol}://${host}/guide/${body.id}`;
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`).replace(/\/+$/, '');
+    const shareUrl = `${baseUrl}/guide/${body.id}`;
 
     return NextResponse.json(
       { success: true, id: result.id, shareUrl },

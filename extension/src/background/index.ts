@@ -159,7 +159,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
           tabUrl.startsWith('view-source:')
         ) {
           throw new Error(
-            'Ekstensi tidak dapat merekam halaman internal browser (chrome:// atau edge://).\nSilakan buka tab website biasa (misal: localhost:3000, google.com, atau sistem kerja Anda).'
+            'Ekstensi tidak dapat merekam halaman internal browser (chrome:// atau edge://).\nSilakan buka tab website biasa (misal: google.com atau sistem kerja Anda).'
           );
         }
 

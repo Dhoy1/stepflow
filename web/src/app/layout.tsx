@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'StepFlow - Dokumentasi & Pelatihan Tim Otomatis',
-  description: 'Ekstensi dan platform dokumentasi langkah demi langkah berbasis web (Tango clone).'
+  description: 'Ekstensi dan platform dokumentasi langkah demi langkah berbasis web untuk tim Kanmo.'
 };
 
 export default function RootLayout({

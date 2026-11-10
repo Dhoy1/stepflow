@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Lock, KeyRound, X, CheckCircle2, AlertCircle, User, Users } from 'lucide-react';
-import { loginWithPin, getStoredEditorName, findTeamByPin, TEAMS_CONFIG, type TeamProfile } from '@/lib/auth';
+import {
+  loginWithPin,
+  getStoredEditorName,
+  findTeamByPin,
+  fetchTeamAccounts,
+  getTeamAccountsCache,
+  type TeamProfile
+} from '@/lib/auth';
 
 interface PinModalProps {
   isOpen: boolean;
@@ -15,6 +22,7 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess }
   const [editorName, setEditorName] = useState('');
   const [error, setError] = useState(false);
   const [detectedTeam, setDetectedTeam] = useState<TeamProfile | null>(null);
+  const [teamList, setTeamList] = useState<TeamProfile[]>(() => getTeamAccountsCache());
 
   useEffect(() => {
     if (isOpen) {
@@ -22,6 +30,13 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess }
       setPin('');
       setError(false);
       setDetectedTeam(null);
+
+      // Ambil daftar akun tim terkini dari database MySQL via API
+      fetchTeamAccounts().then((teams) => {
+        if (teams && teams.length > 0) {
+          setTeamList(teams);
+        }
+      });
     }
   }, [isOpen]);
 
@@ -29,7 +44,7 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess }
   const handlePinChange = (val: string) => {
     setPin(val);
     setError(false);
-    const matched = findTeamByPin(val);
+    const matched = findTeamByPin(val, teamList);
     setDetectedTeam(matched);
   };
 
@@ -38,9 +53,9 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const effectiveName = editorName.trim() || (detectedTeam ? detectedTeam.name : 'Editor Tim');
-    if (loginWithPin(pin, effectiveName)) {
+    if (loginWithPin(pin, effectiveName, teamList)) {
       setError(false);
-      const team = findTeamByPin(pin) || undefined;
+      const team = findTeamByPin(pin, teamList) || undefined;
       setPin('');
       onSuccess(team);
     } else {
@@ -96,12 +111,13 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess }
                 value={pin}
                 onChange={(e) => handlePinChange(e.target.value)}
                 autoFocus
-                className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-xl text-sm font-semibold tracking-wider text-slate-800 focus:outline-none focus:ring-2 transition-all ${error
+                className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-xl text-sm font-semibold tracking-wider text-slate-800 focus:outline-none focus:ring-2 transition-all ${
+                  error
                     ? 'border-rose-400 focus:ring-rose-400 bg-rose-50/30'
                     : detectedTeam
                       ? 'border-emerald-400 focus:ring-emerald-400 bg-emerald-50/20'
                       : 'border-slate-200 focus:ring-orange-500'
-                  }`}
+                }`}
               />
             </div>
 
@@ -120,13 +136,13 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess }
             )}
           </div>
 
-          {/* Daftar Tim yang Terdaftar */}
+          {/* Daftar Tim yang Terdaftar di Database */}
           <div className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1.5">
             <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
-              <Users size={12} className="text-[#FF5C35]" /> Tim yang Didukung:
+              <Users size={12} className="text-[#FF5C35]" /> Tim yang Didukung (Database):
             </div>
             <div className="flex flex-wrap gap-1">
-              {TEAMS_CONFIG.map((team) => (
+              {teamList.map((team) => (
                 <span
                   key={team.id}
                   className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-medium text-slate-600"

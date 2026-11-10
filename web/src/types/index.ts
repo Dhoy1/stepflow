@@ -101,3 +101,12 @@ export interface Workflow {
   logoUrl?: string;
 }
 
+export interface TeamProfile {
+  id: string;
+  name: string;
+  pin: string;
+  badgeColor?: string;
+  role?: string;
+  isActive?: boolean;
+}
+

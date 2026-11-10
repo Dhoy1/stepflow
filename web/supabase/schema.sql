@@ -1,5 +1,5 @@
 -- ========================================================
--- StepFlow (Tango Clone) - Supabase Database Schema
+-- StepFlow - Supabase Database Schema
 -- Run this in your Supabase SQL Editor: https://supabase.com
 -- ========================================================
 

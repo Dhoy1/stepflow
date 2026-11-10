@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { pool, isMySQLConfigured } from './mysql';
-import type { Workflow } from '../types';
+import type { Workflow, TeamProfile } from '../types';
 
 const dataDir = path.join(process.cwd(), 'data');
 const dataFile = path.join(dataDir, 'workflows.json');
@@ -393,4 +393,113 @@ export async function saveWorkflowToCloud(workflow: Workflow): Promise<{ success
   writeLocalWorkflows(list);
 
   return { success: true, id: workflow.id };
+}
+
+let isTeamTableReady = false;
+
+export async function ensureTeamAccountsTable(mysqlPool: any) {
+  if (isTeamTableReady) return;
+  try {
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS team_accounts (
+        id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        pin VARCHAR(50) NOT NULL,
+        role VARCHAR(50) DEFAULT 'editor',
+        badge_color VARCHAR(50) DEFAULT 'emerald',
+        is_active TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    const [rows]: any = await mysqlPool.execute('SELECT COUNT(*) as cnt FROM team_accounts');
+    if ((rows?.[0]?.cnt || 0) === 0) {
+      await mysqlPool.execute(`
+        INSERT INTO team_accounts (id, name, pin, badge_color, role, is_active) VALUES
+        ('team_1', 'Ridho', '24170', 'emerald', 'editor', 1),
+        ('team_2', 'Hikam', '23721', 'blue', 'editor', 1),
+        ('team_3', 'Fazril', '20642', 'purple', 'editor', 1)
+      `);
+    }
+    isTeamTableReady = true;
+  } catch (err) {
+    console.error('ensureTeamAccountsTable error:', err);
+  }
+}
+
+export async function getTeamAccountsFromDB(): Promise<TeamProfile[]> {
+  // 1. Prioritas Utama: MySQL
+  if (isMySQLConfigured && pool) {
+    try {
+      await ensureTeamAccountsTable(pool);
+      const [rows]: any = await pool.execute(
+        'SELECT id, name, pin, badge_color, role, is_active FROM team_accounts WHERE is_active = 1 ORDER BY created_at ASC'
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          pin: String(r.pin),
+          badgeColor: r.badge_color || 'emerald',
+          role: r.role || 'editor',
+          isActive: Boolean(r.is_active)
+        }));
+      }
+    } catch (err) {
+      console.error('MySQL getTeamAccountsFromDB error:', err);
+    }
+  }
+
+  // 2. Default Fallback
+  return [
+    { id: 'team_1', name: 'Ridho', pin: '24170', badgeColor: 'emerald', role: 'editor', isActive: true },
+    { id: 'team_2', name: 'Hikam', pin: '23721', badgeColor: 'blue', role: 'editor', isActive: true },
+    { id: 'team_3', name: 'Fazril', pin: '20642', badgeColor: 'purple', role: 'editor', isActive: true }
+  ];
+}
+
+export async function saveTeamAccountToDB(account: TeamProfile): Promise<boolean> {
+  if (isMySQLConfigured && pool) {
+    try {
+      await ensureTeamAccountsTable(pool);
+      await pool.execute(
+        `INSERT INTO team_accounts (id, name, pin, badge_color, role, is_active)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE 
+           name = VALUES(name),
+           pin = VALUES(pin),
+           badge_color = VALUES(badge_color),
+           role = VALUES(role),
+           is_active = VALUES(is_active)`,
+        [
+          account.id,
+          account.name,
+          account.pin,
+          account.badgeColor || 'emerald',
+          account.role || 'editor',
+          account.isActive !== false ? 1 : 0
+        ]
+      );
+      return true;
+    } catch (err) {
+      console.error('MySQL saveTeamAccountToDB error:', err);
+      throw err;
+    }
+  }
+  return false;
+}
+
+export async function deleteTeamAccountFromDB(id: string): Promise<boolean> {
+  if (isMySQLConfigured && pool) {
+    try {
+      await ensureTeamAccountsTable(pool);
+      await pool.execute('DELETE FROM team_accounts WHERE id = ?', [id]);
+      return true;
+    } catch (err) {
+      console.error('MySQL deleteTeamAccountFromDB error:', err);
+      throw err;
+    }
+  }
+  return false;
 }

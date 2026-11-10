@@ -70,7 +70,7 @@ function createPngBuffer(width, height, drawPixel) {
   return Buffer.concat([header, ihdrChunk, idatChunk, iendChunk]);
 }
 
-// Design: Tango-style rounded badge with camera / record circle
+// Design: StepFlow rounded badge with camera / record circle
 function drawIcon(x, y, w, h) {
   const cx = w / 2;
   const cy = h / 2;
@@ -79,14 +79,14 @@ function drawIcon(x, y, w, h) {
   // Distance from center
   const dist = Math.hypot(x - cx, y - cy);
   
-  // Outer circle: Tango Orange (#FF5C35 -> 255, 92, 53)
+  // Outer circle: StepFlow Orange (#FF5C35 -> 255, 92, 53)
   if (dist <= r - 1) {
     // Inner white circle/dot for record
     const innerDist = Math.hypot(x - cx, y - cy);
     if (innerDist <= r * 0.45) {
       return [255, 255, 255, 255]; // Pure white inner circle
     }
-    return [255, 92, 53, 255]; // Tango Orange
+    return [255, 92, 53, 255]; // StepFlow Orange
   } else if (dist <= r) {
     // Antialiased edge
     const alpha = Math.floor((r - dist) * 255);

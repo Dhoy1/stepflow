@@ -4571,7 +4571,7 @@ chrome.runtime.onMessage.addListener((P, z, ae) => ((async () => {
       if ($.startsWith("chrome://") || $.startsWith("edge://") || $.startsWith("chrome-extension://") || $.startsWith("about:") || $.startsWith("view-source:"))
         throw new Error(
           `Ekstensi tidak dapat merekam halaman internal browser (chrome:// atau edge://).
-Silakan buka tab website biasa (misal: localhost:3000, google.com, atau sistem kerja Anda).`
+Silakan buka tab website biasa (misal: google.com atau sistem kerja Anda).`
         );
       if (Ye = M.id, X = "recording", (O = P.payload) != null && O.appendToId) {
         let L = await rt.workflows.get(P.payload.appendToId);

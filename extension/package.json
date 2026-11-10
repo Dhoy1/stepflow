@@ -1,7 +1,7 @@
 {
   "name": "stepflow-extension",
   "version": "1.0.0",
-  "description": "Interactive Step-by-Step Tutorial & Workflow Recorder (Tango clone)",
+  "description": "Interactive Step-by-Step Tutorial & Workflow Recorder",
   "type": "module",
   "scripts": {
     "dev": "node scripts/build.mjs --watch",

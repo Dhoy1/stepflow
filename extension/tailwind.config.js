@@ -21,7 +21,7 @@ export default {
           600: '#0d9488',
           700: '#0f766e',
         },
-        tango: {
+        stepflow: {
           orange: '#FF5C35',
           dark: '#1E1E24',
           light: '#F8F9FA'
