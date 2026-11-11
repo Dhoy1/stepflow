@@ -79,25 +79,12 @@ export async function exportToWord(workflow: Workflow): Promise<void> {
   const children: any[] = [];
 
   // --- 1. COVER / HEADER SECTION ---
-  // Top Accent Bar
   children.push(
-    new Paragraph({
-      alignment: AlignmentType.LEFT,
-      children: [
-        new TextRun({
-          text: 'STEPFLOW WORKFLOW GUIDE',
-          bold: true,
-          size: 18,
-          color: 'FF5C35'
-        })
-      ],
-      spacing: { before: 100, after: 80 }
-    }),
     new Paragraph({
       text: workflow.title,
       heading: HeadingLevel.TITLE,
       alignment: AlignmentType.LEFT,
-      spacing: { before: 80, after: 120 }
+      spacing: { before: 100, after: 120 }
     })
   );
 
@@ -131,7 +118,6 @@ export async function exportToWord(workflow: Workflow): Promise<void> {
       rows: [
         new TableRow({
           children: [
-            createMetaCell('KATEGORI', workflow.category || 'General SOP'),
             createMetaCell('TOTAL LANGKAH', `${workflow.steps.length} Langkah`),
             createMetaCell('TANGGAL', dateFormatted)
           ]

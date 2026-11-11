@@ -20,7 +20,8 @@ import {
   Share2,
   ExternalLink,
   Copy,
-  User
+  User,
+  GripVertical
 } from 'lucide-react';
 import { db, getWorkflow, saveWorkflow, getAllWorkflows } from '../lib/db';
 import { DEFAULT_WORKFLOWS_API } from '../lib/config';
@@ -47,6 +48,8 @@ export const Editor: React.FC = () => {
   const [editorName, setEditorName] = useState<string>(() => {
     return localStorage.getItem('stepflow_editor_name') || 'Tim Perusahaan';
   });
+  const [draggedStepIndex, setDraggedStepIndex] = useState<number | null>(null);
+  const [dragOverStepIndex, setDragOverStepIndex] = useState<number | null>(null);
 
   useEffect(() => {
     // 1. Check URL param ?id=...
@@ -142,6 +145,19 @@ export const Editor: React.FC = () => {
     // Recalculate order numbers
     newSteps.forEach((s, idx) => (s.order = idx + 1));
 
+    handleUpdateWorkflow({ steps: newSteps });
+    setSelectedStepIndex(targetIndex);
+  };
+
+  // Drag-and-Drop Reorder handler (Kanban-style)
+  const handleReorderStep = (sourceIndex: number, targetIndex: number) => {
+    if (!workflow || sourceIndex === targetIndex) return;
+
+    const newSteps = [...workflow.steps];
+    const [movedStep] = newSteps.splice(sourceIndex, 1);
+    newSteps.splice(targetIndex, 0, movedStep);
+
+    newSteps.forEach((s, idx) => (s.order = idx + 1));
     handleUpdateWorkflow({ steps: newSteps });
     setSelectedStepIndex(targetIndex);
   };
@@ -293,9 +309,9 @@ export const Editor: React.FC = () => {
   const currentStep = workflow.steps[selectedStepIndex];
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-100">
+    <div className="flex flex-col h-screen bg-slate-100 overflow-hidden">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-50 bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm">
+      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm shrink-0 z-50">
         <div className="flex items-center gap-4">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#FF5C35] to-[#FF8C66] flex items-center justify-center text-white font-bold text-lg shadow-sm">
             S
@@ -415,10 +431,10 @@ export const Editor: React.FC = () => {
       </header>
 
       {/* Main Studio Body */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left Sidebar: Step Thumbnails */}
-        <aside className="w-80 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+        <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden shrink-0">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Daftar Langkah</span>
             <button
               onClick={addManualStep}
@@ -428,29 +444,79 @@ export const Editor: React.FC = () => {
             </button>
           </div>
 
-          <div className="p-3 space-y-2 flex-1">
+          <div className="p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
             {workflow.steps.map((st, idx) => {
               const isSelected = idx === selectedStepIndex;
+              const isDragging = draggedStepIndex === idx;
+              const isDragOver = dragOverStepIndex === idx && !isDragging;
+
               return (
                 <div
                   key={st.id}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    setDraggedStepIndex(idx);
+                    e.dataTransfer.effectAllowed = 'move';
+                    try {
+                      e.dataTransfer.setData('text/plain', String(idx));
+                    } catch {}
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOverStepIndex !== idx) {
+                      setDragOverStepIndex(idx);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverStepIndex === idx) {
+                      setDragOverStepIndex(null);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedStepIndex !== null && draggedStepIndex !== idx) {
+                      handleReorderStep(draggedStepIndex, idx);
+                    }
+                    setDraggedStepIndex(null);
+                    setDragOverStepIndex(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedStepIndex(null);
+                    setDragOverStepIndex(null);
+                  }}
                   onClick={() => setSelectedStepIndex(idx)}
-                  className={`group relative p-3 rounded-xl border transition-all cursor-pointer ${isSelected
-                    ? 'bg-orange-50/60 border-orange-500 shadow-sm'
-                    : 'bg-white border-slate-200 hover:border-slate-300'
-                    }`}
+                  className={`group relative p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                    isDragging
+                      ? 'opacity-40 border-dashed border-orange-500 bg-orange-50/50 scale-[0.98]'
+                      : isDragOver
+                        ? 'border-orange-500 ring-2 ring-orange-400 bg-orange-50/70 shadow-md'
+                        : isSelected
+                          ? 'bg-orange-50/60 border-orange-500 shadow-sm'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
                 >
                   <div className="flex items-start gap-2.5">
+                    {/* Drag Handle Icon */}
+                    <div
+                      title="Tarik untuk memindahkan urutan langkah"
+                      className="cursor-grab active:cursor-grabbing text-slate-300 group-hover:text-slate-500 hover:text-orange-600 transition-colors shrink-0 -ml-1 p-0.5 mt-0.5"
+                    >
+                      <GripVertical size={14} />
+                    </div>
+
                     <span
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${isSelected ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600'
-                        }`}
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                        isSelected ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}
                     >
                       {idx + 1}
                     </span>
                     <div className="min-w-0 flex-1">
                       <h4
-                        className={`text-xs font-semibold truncate ${isSelected ? 'text-orange-950' : 'text-slate-800'
-                          }`}
+                        className={`text-xs font-semibold truncate ${
+                          isSelected ? 'text-orange-950' : 'text-slate-800'
+                        }`}
                       >
                         {st.title}
                       </h4>
@@ -500,7 +566,7 @@ export const Editor: React.FC = () => {
         </aside>
 
         {/* Center Canvas & Step Editor */}
-        <main className="flex-1 p-6 overflow-y-auto max-w-5xl mx-auto flex flex-col gap-6">
+        <main className="flex-1 p-6 overflow-y-auto max-w-5xl mx-auto flex flex-col gap-6 min-h-0">
           {currentStep && (
             <>
               {/* Step Title & Instruction Input */}

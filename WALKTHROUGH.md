@@ -41,15 +41,15 @@ Teman atau rekan satu tim Anda **tidak memerlukan** Laragon, Node.js, atau termi
    * **"Mulai Rekam Alur Baru"**: Membuat rekaman tutorial dari langkah 1.
    * **"Lanjutkan Rekaman Sebelumnya"**: Menambahkan langkah baru ke panduan yang sedang dikerjakan.
 4. Klik tombol oranye **"Mulai Rekam Alur"**.
-5. Di bagian bawah layar website akan muncul **Floating Control Dock** berwarna gelap:
-   * 🟠 **Indikator Titik Oranye**: Menunjukkan rekaman aktif dan jumlah langkah yang tercatat.
-   * ⏸️ **Tombol Pause**: Untuk menjeda rekaman sementara jika Anda perlu membuka tab pribadi.
-   * ✅ **Tombol Selesai**: Menghentikan perekaman dan langsung membuka Studio Editor.
-   * 🗑️ **Tombol Sampah**: Membatalkan rekaman.
-6. Klik elemen, tombol, atau isi formulir di website target:
-   * Sistem secara cerdas menyembunyikan dock 90ms sebelum tangkapan layar diambil agar dock tidak mengotori gambar screenshot.
+5. Ekstensi langsung aktif merekam di latar belakang (layar website tetap bersih tanpa ada floating bar/dock yang menghalangi):
+   * Ikon StepFlow di toolbar browser akan menampilkan indikator bahwa rekaman sedang berjalan.
+6. Lakukan alur kerja di website target (klik tombol, pilih menu, isi formulir):
+   * Setiap tindakan Anda akan otomatis ditangkap layarnya beserta sorotan elemennya (*auto-highlight*).
    * Kalimat instruksi otomatis dibuat dalam bahasa Inggris profesional (*Click on "..." button*, *Type into "..." input field*).
-7. Setelah selesai, klik tombol **"Selesai"** pada dock di bawah layar.
+7. Setelah selesai merekam semua langkah:
+   * Klik kembali ikon ekstensi **StepFlow** di toolbar browser.
+   * Anda dapat melihat jumlah langkah yang sudah tercatat, tombol **"Jeda"**, atau tombol **"Batalkan Rekaman"**.
+   * Klik tombol hijau **"Selesai"** untuk mengakhiri perekaman. Studio Editor akan otomatis terbuka di tab baru.
 
 ---
 

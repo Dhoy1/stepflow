@@ -11,34 +11,12 @@ export async function exportToPptx(workflow: Workflow): Promise<void> {
   const coverSlide = pres.addSlide();
   coverSlide.background = { color: '0F172A' }; // Slate 900 dark background
 
-  // Brand Badge
-  coverSlide.addShape(pres.ShapeType.roundRect, {
-    x: 1.0,
-    y: 1.6,
-    w: 1.8,
-    h: 0.35,
-    rectRadius: 0.17,
-    fill: { color: 'FF5C35' }
-  });
-  coverSlide.addText('STEPFLOW GUIDE', {
-    x: 1.0,
-    y: 1.6,
-    w: 1.8,
-    h: 0.35,
-    fontSize: 10,
-    bold: true,
-    color: 'FFFFFF',
-    align: 'center',
-    valign: 'middle',
-    fontFace: 'Arial'
-  });
-
   // Title
   coverSlide.addText(workflow.title, {
     x: 1.0,
-    y: 2.2,
+    y: 2.0,
     w: 11.333,
-    h: 1.6,
+    h: 1.8,
     fontSize: 32,
     bold: true,
     color: 'FFFFFF',
@@ -69,9 +47,7 @@ export async function exportToPptx(workflow: Workflow): Promise<void> {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
-    })}  •  Total: ${workflow.steps.length} Langkah${
-      workflow.category ? `  •  Kategori: ${workflow.category}` : ''
-    }`,
+    })}  •  Total: ${workflow.steps.length} Langkah`,
     {
       x: 1.0,
       y: 6.2,

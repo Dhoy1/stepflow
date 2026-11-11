@@ -70,13 +70,6 @@ export async function exportToPdf(workflow: Workflow): Promise<void> {
   }
 
   // --- 1. COVER / HEADER SECTION ---
-  // Top brand label
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(255, 92, 53); // #FF5C35
-  doc.text('STEPFLOW WORKFLOW GUIDE', margin, cursorY + 2);
-  cursorY += 7;
-
   // Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
@@ -110,19 +103,14 @@ export async function exportToPdf(workflow: Workflow): Promise<void> {
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(100, 116, 139);
-  doc.text('KATEGORI:', margin + 4, cursorY + 5.2);
+  doc.text('TOTAL:', margin + 6, cursorY + 5.2);
   doc.setTextColor(15, 23, 42);
-  doc.text(workflow.category || 'General SOP', margin + 22, cursorY + 5.2);
+  doc.text(`${workflow.steps.length} Langkah`, margin + 20, cursorY + 5.2);
 
   doc.setTextColor(100, 116, 139);
-  doc.text('TOTAL:', margin + 70, cursorY + 5.2);
+  doc.text('TANGGAL:', margin + 70, cursorY + 5.2);
   doc.setTextColor(15, 23, 42);
-  doc.text(`${workflow.steps.length} Langkah`, margin + 83, cursorY + 5.2);
-
-  doc.setTextColor(100, 116, 139);
-  doc.text('TANGGAL:', margin + 120, cursorY + 5.2);
-  doc.setTextColor(15, 23, 42);
-  doc.text(dateFormatted, margin + 138, cursorY + 5.2);
+  doc.text(dateFormatted, margin + 88, cursorY + 5.2);
 
   cursorY += 14;
 

@@ -22,7 +22,8 @@ import {
   Tag,
   ChevronLeft,
   ChevronRight,
-  FileText
+  FileText,
+  GripVertical
 } from 'lucide-react';
 import { isEditorAuthenticated, logoutEditor, getStoredEditorName, getActiveTeam, type TeamProfile } from '@/lib/auth';
 import { PinModal } from '@/components/PinModal';
@@ -51,6 +52,8 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
   const [showPinModal, setShowPinModal] = useState(false);
   const [isAuth, setIsAuth] = useState(false);
   const [activeTeam, setActiveTeam] = useState<TeamProfile | null>(null);
+  const [draggedStepIndex, setDraggedStepIndex] = useState<number | null>(null);
+  const [dragOverStepIndex, setDragOverStepIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isEditorAuthenticated()) {
@@ -153,6 +156,19 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
     setSelectedStepIndex(targetIndex);
   };
 
+  // Drag-and-Drop Reorder handler (Kanban-style)
+  const handleReorderStep = (sourceIndex: number, targetIndex: number) => {
+    if (sourceIndex === targetIndex) return;
+
+    const newSteps = [...workflow.steps];
+    const [movedStep] = newSteps.splice(sourceIndex, 1);
+    newSteps.splice(targetIndex, 0, movedStep);
+
+    newSteps.forEach((s, idx) => (s.order = idx + 1));
+    handleUpdateWorkflow({ steps: newSteps });
+    setSelectedStepIndex(targetIndex);
+  };
+
   // Delete step
   const deleteStep = (index: number) => {
     if (workflow.steps.length <= 1) {
@@ -219,9 +235,9 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans select-none">
+    <div className="h-screen bg-slate-100 flex flex-col font-sans select-none overflow-hidden">
       {/* Top Studio Navbar */}
-      <nav className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+      <nav className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 flex items-center justify-between shrink-0 z-40 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <Link
             href={`/guide/${workflow.id}`}
@@ -329,7 +345,7 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
       </nav>
 
       {/* Sub Bar: Guide Description / Subtitle */}
-      <div className="bg-slate-50 border-b border-slate-200 px-4 sm:px-6 py-2 flex items-center gap-2 text-xs flex-shrink-0 z-30 shadow-xs">
+      <div className="bg-slate-50 border-b border-slate-200 px-4 sm:px-6 py-2 flex items-center gap-2 text-xs shrink-0 z-30 shadow-xs">
         <span className="font-bold text-slate-600 shrink-0 flex items-center gap-1.5">
           <FileText size={13} className="text-[#FF5C35]" /> Subtitle / Deskripsi:
         </span>
@@ -345,8 +361,8 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
       {/* Main Workspace Layout */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Left Sidebar: Step Thumbnails */}
-        <div className="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 z-10 shadow-sm">
-          <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
+        <div className="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col shrink-0 z-10 shadow-sm h-full overflow-hidden">
+          <div className="p-3.5 border-b border-slate-100 flex items-center justify-between shrink-0">
             <span className="text-xs font-bold text-slate-700">
               Daftar Langkah ({workflow.steps.length})
             </span>
@@ -359,81 +375,136 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
           </div>
 
           {/* Step Thumbnails Scroll */}
-          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2.5">
-            {workflow.steps.map((st, idx) => (
-              <div
-                key={st.id || idx}
-                onClick={() => setSelectedStepIndex(idx)}
-                className={`group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
-                  selectedStepIndex === idx
-                    ? 'bg-orange-50/60 border-orange-400 shadow-sm ring-1 ring-orange-400'
-                    : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex flex-col items-center justify-center w-6 text-slate-400">
-                  <span className="text-xs font-extrabold text-slate-700">{idx + 1}</span>
-                </div>
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2.5 min-h-0">
+            {workflow.steps.map((st, idx) => {
+              const isSelected = selectedStepIndex === idx;
+              const isDragging = draggedStepIndex === idx;
+              const isDragOver = dragOverStepIndex === idx && !isDragging;
 
-                {st.screenshot && (
-                  <div className="w-14 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0 relative">
-                    <img
-                      src={st.screenshot}
-                      alt={`Step ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+              return (
+                <div
+                  key={st.id || idx}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    setDraggedStepIndex(idx);
+                    e.dataTransfer.effectAllowed = 'move';
+                    try {
+                      e.dataTransfer.setData('text/plain', String(idx));
+                    } catch {}
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOverStepIndex !== idx) {
+                      setDragOverStepIndex(idx);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverStepIndex === idx) {
+                      setDragOverStepIndex(null);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedStepIndex !== null && draggedStepIndex !== idx) {
+                      handleReorderStep(draggedStepIndex, idx);
+                    }
+                    setDraggedStepIndex(null);
+                    setDragOverStepIndex(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedStepIndex(null);
+                    setDragOverStepIndex(null);
+                  }}
+                  onClick={() => setSelectedStepIndex(idx)}
+                  className={`group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5 relative select-none ${
+                    isDragging
+                      ? 'opacity-40 border-dashed border-orange-500 bg-orange-50/50 scale-[0.98]'
+                      : isDragOver
+                        ? 'border-orange-500 ring-2 ring-orange-400 bg-orange-50/70 shadow-md'
+                        : isSelected
+                          ? 'bg-orange-50/60 border-orange-400 shadow-sm ring-1 ring-orange-400'
+                          : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  {/* Drag Handle Icon */}
+                  <div
+                    title="Tarik untuk memindahkan urutan langkah"
+                    className="cursor-grab active:cursor-grabbing text-slate-300 group-hover:text-slate-500 hover:text-orange-600 transition-colors shrink-0 -ml-1 p-0.5"
+                  >
+                    <GripVertical size={14} />
                   </div>
-                )}
 
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-bold text-slate-800 truncate">
-                    {st.title || `Langkah ${idx + 1}`}
-                  </h4>
-                  <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                    {st.description || 'Tanpa keterangan'}
-                  </p>
-                </div>
+                  <div className="flex flex-col items-center justify-center w-5 text-slate-400 shrink-0">
+                    <span className={`text-xs font-extrabold ${isSelected ? 'text-orange-600' : 'text-slate-700'}`}>
+                      {idx + 1}
+                    </span>
+                  </div>
 
-                {/* Quick Reorder & Delete */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveStep(idx, 'up');
-                    }}
-                    disabled={idx === 0}
-                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20"
-                  >
-                    <ArrowUp size={12} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveStep(idx, 'down');
-                    }}
-                    disabled={idx === workflow.steps.length - 1}
-                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20"
-                  >
-                    <ArrowDown size={12} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteStep(idx);
-                    }}
-                    className="p-1 text-slate-400 hover:text-rose-500"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  {st.screenshot && (
+                    <div className="w-14 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0 relative">
+                      <img
+                        src={st.screenshot}
+                        alt={`Step ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <h4 className={`text-xs font-bold truncate ${isSelected ? 'text-orange-950' : 'text-slate-800'}`}>
+                      {st.title || `Langkah ${idx + 1}`}
+                    </h4>
+                    <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                      {st.description || 'Tanpa keterangan'}
+                    </p>
+                  </div>
+
+                  {/* Quick Reorder & Delete */}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveStep(idx, 'up');
+                      }}
+                      disabled={idx === 0}
+                      title="Geser ke Atas"
+                      className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20"
+                    >
+                      <ArrowUp size={12} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveStep(idx, 'down');
+                      }}
+                      disabled={idx === workflow.steps.length - 1}
+                      title="Geser ke Bawah"
+                      className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20"
+                    >
+                      <ArrowDown size={12} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteStep(idx);
+                      }}
+                      title="Hapus Langkah"
+                      className="p-1 text-slate-400 hover:text-rose-500"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {/* Center: Canvas Workspace & Bottom Inspector */}
-        <div className="flex-1 flex flex-col bg-slate-100 overflow-y-auto">
+        <div className="flex-1 flex flex-col bg-slate-100 overflow-y-auto min-h-0">
           {/* Main Visual Canvas Area */}
-          <div className="p-4 sm:p-6 flex-1 flex flex-col items-center justify-center">
+          <div className="p-4 sm:p-6 flex flex-col items-center justify-start shrink-0">
             <div className="max-w-4xl w-full">
               {currentStep ? (
                 <StepCanvas
@@ -451,7 +522,7 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
 
           {/* Bottom Inspector Form: Step Title, Description, Callout */}
           {currentStep && (
-            <div className="bg-white border-t border-slate-200 p-4 sm:p-6 flex flex-col gap-4 shadow-sm">
+            <div className="bg-white border-t border-slate-200 p-4 sm:p-6 flex flex-col gap-4 shadow-sm shrink-0">
               <div className="max-w-4xl w-full mx-auto flex flex-col gap-4">
                 {/* Stepper Header */}
                 <div className="flex items-center justify-between">
