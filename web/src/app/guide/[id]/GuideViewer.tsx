@@ -58,6 +58,9 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
   const [categoryInput, setCategoryInput] = useState(initialWorkflow.category || 'General SOP');
   const [isSavingCategory, setIsSavingCategory] = useState(false);
 
+  // Navigating to WebEditor state
+  const [isNavigatingToEdit, setIsNavigatingToEdit] = useState(false);
+
   const [pendingAction, setPendingAction] = useState<'editor' | 'inlineDesc' | 'targetUrl' | 'category' | null>(null);
 
   useEffect(() => {
@@ -91,6 +94,10 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
 
   const handleEditClick = () => {
     if (isEditorAuthenticated()) {
+      setIsNavigatingToEdit(true);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('stepflow-start-progress'));
+      }
       router.push(`/guide/${workflow.id}/edit`);
     } else {
       setPendingAction('editor');
@@ -143,6 +150,10 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
       setIsEditingCategory(true);
       setPendingAction(null);
     } else {
+      setIsNavigatingToEdit(true);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('stepflow-start-progress'));
+      }
       router.push(`/guide/${workflow.id}/edit`);
     }
   };
@@ -314,11 +325,21 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
           {/* Edit Guide Button (Protected by PIN) */}
           <button
             onClick={handleEditClick}
+            disabled={isNavigatingToEdit}
             title="Edit judul, keterangan langkah, atau gambar (Perlu PIN Tim)"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-[#FF5C35] transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-[#FF5C35] transition-all shadow-xs disabled:opacity-60"
           >
-            <Edit size={14} />
-            <span>Edit Panduan & Teks</span>
+            {isNavigatingToEdit ? (
+              <>
+                <Loader2 size={14} className="animate-spin text-[#FF5C35]" />
+                <span>Membuka Editor...</span>
+              </>
+            ) : (
+              <>
+                <Edit size={14} />
+                <span>Edit Panduan & Teks</span>
+              </>
+            )}
           </button>
 
           {/* Copy Share Link */}
