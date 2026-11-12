@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   FileDown,
   FileText,
@@ -21,6 +21,7 @@ import {
   ExternalLink,
   Copy,
   User,
+  Globe,
   GripVertical
 } from 'lucide-react';
 import { db, getWorkflow, saveWorkflow, getAllWorkflows } from '../lib/db';
@@ -50,6 +51,7 @@ export const Editor: React.FC = () => {
   });
   const [draggedStepIndex, setDraggedStepIndex] = useState<number | null>(null);
   const [dragOverStepIndex, setDragOverStepIndex] = useState<number | null>(null);
+  const stepHistoryCacheRef = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
     // 1. Check URL param ?id=...
@@ -334,14 +336,25 @@ export const Editor: React.FC = () => {
                 placeholder="Kategori..."
               />
             </div>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
               <input
                 type="text"
                 value={workflow.description || ''}
                 onChange={(e) => handleUpdateWorkflow({ description: e.target.value })}
-                className="text-xs text-slate-500 hover:text-slate-700 bg-transparent hover:bg-slate-50 focus:bg-white border border-transparent focus:border-slate-300 focus:ring-1 focus:ring-orange-400 rounded px-1.5 py-0.5 -ml-1.5 transition-all outline-none w-80 sm:w-96 truncate"
+                className="text-xs text-slate-500 hover:text-slate-700 bg-transparent hover:bg-slate-50 focus:bg-white border border-transparent focus:border-slate-300 focus:ring-1 focus:ring-orange-400 rounded px-1.5 py-0.5 -ml-1.5 transition-all outline-none w-64 sm:w-80 truncate"
                 placeholder="Tulis subtitle / deskripsi panduan di sini..."
               />
+              <div className="flex items-center gap-1 text-[11px] text-slate-400 bg-slate-50 border border-slate-200/80 rounded px-2 py-0.5">
+                <Globe size={11} className="text-slate-400 shrink-0" />
+                <input
+                  type="url"
+                  value={workflow.targetUrl || ''}
+                  onChange={(e) => handleUpdateWorkflow({ targetUrl: e.target.value })}
+                  placeholder="URL Target..."
+                  title="Link target aplikasi"
+                  className="bg-transparent font-medium text-slate-600 outline-none w-44 sm:w-56"
+                />
+              </div>
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
               <span>{workflow.steps.length} Langkah</span>
@@ -697,6 +710,7 @@ export const Editor: React.FC = () => {
                 key={currentStep.id}
                 step={currentStep}
                 onUpdateStep={(updated) => handleUpdateStepById(currentStep.id, updated)}
+                historyCache={stepHistoryCacheRef}
               />
             </>
           )}

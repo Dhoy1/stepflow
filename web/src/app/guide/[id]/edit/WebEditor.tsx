@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  Globe,
   GripVertical
 } from 'lucide-react';
 import { isEditorAuthenticated, logoutEditor, getStoredEditorName, getActiveTeam, type TeamProfile } from '@/lib/auth';
@@ -54,6 +55,7 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
   const [activeTeam, setActiveTeam] = useState<TeamProfile | null>(null);
   const [draggedStepIndex, setDraggedStepIndex] = useState<number | null>(null);
   const [dragOverStepIndex, setDragOverStepIndex] = useState<number | null>(null);
+  const stepHistoryCacheRef = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
     if (!isEditorAuthenticated()) {
@@ -279,20 +281,22 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
             </div>
           )}
 
-          {/* Category Dropdown */}
-          <div className="hidden lg:flex items-center gap-1 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
-            <Tag size={13} className="text-slate-400" />
-            <select
+          {/* Category Selector (Dropdown with Custom Input Support) */}
+          <div className="flex items-center gap-1 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+            <Tag size={13} className="text-slate-400 shrink-0" />
+            <input
+              list="webeditor-categories"
               value={workflow.category || 'General SOP'}
               onChange={(e) => handleUpdateWorkflow({ category: e.target.value }, true)}
-              className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-            >
+              placeholder="Kategori..."
+              title="Pilih atau ketik kategori baru"
+              className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none w-28 sm:w-36 hover:bg-white focus:bg-white rounded px-1 transition-all"
+            />
+            <datalist id="webeditor-categories">
               {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
+                <option key={cat} value={cat} />
               ))}
-            </select>
+            </datalist>
           </div>
 
           {/* Status Indicator */}
@@ -344,18 +348,36 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
         </div>
       </nav>
 
-      {/* Sub Bar: Guide Description / Subtitle */}
-      <div className="bg-slate-50 border-b border-slate-200 px-4 sm:px-6 py-2 flex items-center gap-2 text-xs shrink-0 z-30 shadow-xs">
-        <span className="font-bold text-slate-600 shrink-0 flex items-center gap-1.5">
-          <FileText size={13} className="text-[#FF5C35]" /> Subtitle / Deskripsi:
-        </span>
-        <input
-          type="text"
-          value={workflow.description || ''}
-          onChange={(e) => handleUpdateWorkflow({ description: e.target.value })}
-          placeholder="Tuliskan keterangan / subtitle panduan di sini (otomatis tersinkronisasi ke PDF, PPT, dan Word)..."
-          className="flex-1 bg-white hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-[#FF5C35] focus:ring-1 focus:ring-[#FF5C35] rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none transition-all font-medium"
-        />
+      {/* Sub Bar: Guide Description / Subtitle & Target URL */}
+      <div className="bg-slate-50 border-b border-slate-200 px-4 sm:px-6 py-2 flex flex-col md:flex-row items-stretch md:items-center gap-3 text-xs shrink-0 z-30 shadow-xs">
+        {/* Subtitle */}
+        <div className="flex-1 flex items-center gap-2">
+          <span className="font-bold text-slate-600 shrink-0 flex items-center gap-1.5">
+            <FileText size={13} className="text-[#FF5C35]" /> Subtitle:
+          </span>
+          <input
+            type="text"
+            value={workflow.description || ''}
+            onChange={(e) => handleUpdateWorkflow({ description: e.target.value })}
+            placeholder="Tuliskan keterangan / subtitle panduan di sini (otomatis tersinkronisasi ke PDF, PPT, dan Word)..."
+            className="flex-1 bg-white hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-[#FF5C35] focus:ring-1 focus:ring-[#FF5C35] rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none transition-all font-medium"
+          />
+        </div>
+
+        {/* Target URL */}
+        <div className="flex-1 flex items-center gap-2">
+          <span className="font-bold text-slate-600 shrink-0 flex items-center gap-1.5">
+            <Globe size={13} className="text-purple-600" /> Link Target:
+          </span>
+          <input
+            type="url"
+            value={workflow.targetUrl || ''}
+            onChange={(e) => handleUpdateWorkflow({ targetUrl: e.target.value })}
+            placeholder="https://contoh-aplikasi.com/..."
+            title="Link target aplikasi atau situs web panduan ini"
+            className="flex-1 bg-white hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none transition-all font-medium"
+          />
+        </div>
       </div>
 
       {/* Main Workspace Layout */}
@@ -511,6 +533,7 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
                   key={currentStep.id}
                   step={currentStep}
                   onUpdateStep={(updated) => handleUpdateStepById(currentStep.id, updated)}
+                  historyCache={stepHistoryCacheRef}
                 />
               ) : (
                 <div className="bg-white rounded-2xl border p-12 text-center text-slate-400">

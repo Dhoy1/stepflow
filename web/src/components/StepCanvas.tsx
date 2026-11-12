@@ -20,12 +20,7 @@ import {
 } from 'lucide-react';
 import type { Step, BlurRegion, HighlightConfig, ArrowAnnotation, NumberBadge } from '../types';
 
-interface StepCanvasProps {
-  step: Step;
-  onUpdateStep: (updated: Partial<Step>) => void;
-}
-
-interface CanvasSnapshot {
+export interface CanvasSnapshot {
   screenshot: string;
   originalScreenshot?: string;
   annotatedScreenshot?: string;
@@ -33,6 +28,17 @@ interface CanvasSnapshot {
   numberBadges: NumberBadge[];
   blurRegions: BlurRegion[];
   arrows: ArrowAnnotation[];
+}
+
+export interface StepHistoryEntry {
+  history: CanvasSnapshot[];
+  index: number;
+}
+
+interface StepCanvasProps {
+  step: Step;
+  onUpdateStep: (updated: Partial<Step>) => void;
+  historyCache?: React.MutableRefObject<Map<string, StepHistoryEntry>>;
 }
 
 type ToolMode = 'none' | 'highlight' | 'crop' | 'blur' | 'arrow' | 'badge';
@@ -46,7 +52,7 @@ const HIGHLIGHT_COLORS = [
   { name: 'Green', hex: '#10B981' }
 ];
 
-export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) => {
+export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep, historyCache }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -103,6 +109,15 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
     setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
   };
 
+  const syncToCache = (newHistory: CanvasSnapshot[], newIndex: number) => {
+    if (historyCache?.current) {
+      historyCache.current.set(step.id, {
+        history: newHistory,
+        index: newIndex
+      });
+    }
+  };
+
   const captureCurrentSnapshot = (): CanvasSnapshot => ({
     screenshot: step.screenshot || '',
     originalScreenshot: step.originalScreenshot || step.screenshot || '',
@@ -115,8 +130,10 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
 
   const pushNewSnapshot = (nextSnapshot: CanvasSnapshot) => {
     if (historyRef.current.length === 0) {
-      historyRef.current = [captureCurrentSnapshot()];
+      const snap = captureCurrentSnapshot();
+      historyRef.current = [snap];
       historyIndexRef.current = 0;
+      syncToCache([snap], 0);
     }
 
     const currentIndex = historyIndexRef.current;
@@ -128,6 +145,7 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
     }
     historyRef.current = nextHistory;
     historyIndexRef.current = nextHistory.length - 1;
+    syncToCache(nextHistory, nextHistory.length - 1);
     updateUndoRedoAvailability();
   };
 
@@ -138,6 +156,7 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
     if (!targetSnap) return;
 
     historyIndexRef.current = nextIndex;
+    syncToCache(historyRef.current, nextIndex);
     updateUndoRedoAvailability();
 
     onUpdateStep({
@@ -163,6 +182,7 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
     if (!targetSnap) return;
 
     historyIndexRef.current = nextIndex;
+    syncToCache(historyRef.current, nextIndex);
     updateUndoRedoAvailability();
 
     onUpdateStep({
@@ -181,14 +201,20 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
     setSelectedArrowId(null);
   };
 
-  // Reset or initialize history on step change
+  // Restore from cache or initialize history on step change
   const currentStepIdForHistory = useRef(step.id);
   useEffect(() => {
-    if (currentStepIdForHistory.current !== step.id || historyRef.current.length === 0) {
-      currentStepIdForHistory.current = step.id;
+    currentStepIdForHistory.current = step.id;
+    const cached = historyCache?.current.get(step.id);
+    if (cached && cached.history && cached.history.length > 0) {
+      historyRef.current = cached.history;
+      historyIndexRef.current = cached.index;
+      updateUndoRedoAvailability();
+    } else {
       const initialSnap = captureCurrentSnapshot();
       historyRef.current = [initialSnap];
       historyIndexRef.current = 0;
+      syncToCache([initialSnap], 0);
       updateUndoRedoAvailability();
     }
   }, [step.id]);
@@ -1868,7 +1894,10 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
       {/* Screenshot Canvas Viewer / Empty State */}
       <div
         ref={containerRef}
-        className="relative bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-200 flex items-center justify-center p-3 min-h-[380px]"
+        onMouseUp={handleMouseUp}
+        className={`relative bg-slate-900/95 rounded-2xl overflow-hidden shadow-sm border border-slate-800 flex items-center justify-center p-3 sm:p-4 min-h-[380px] ${
+          hasImage ? 'w-fit max-w-full mx-auto' : 'w-full'
+        }`}
       >
         {!hasImage ? (
           /* Empty Page Dropzone */
@@ -1904,88 +1933,90 @@ export const StepCanvas: React.FC<StepCanvasProps> = ({ step, onUpdateStep }) =>
             </div>
           </div>
         ) : (
-          <canvas
-            ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            style={{ cursor: hoverCursor }}
-            className="max-w-full max-h-[620px] object-contain rounded"
-          />
-        )}
-
-        {/* Live Dragging Arrow Preview Overlay */}
-        {dragMode === 'new-arrow' && currentArrow && canvasRef.current && (
-          <svg
-            className="absolute inset-0 pointer-events-none w-full h-full"
-            viewBox={`0 0 ${canvasRef.current.width} ${canvasRef.current.height}`}
-          >
-            <defs>
-              <marker
-                id="preview-arrowhead"
-                markerWidth="12"
-                markerHeight="8"
-                refX="10"
-                refY="4"
-                orient="auto"
-              >
-                <polygon points="0 0, 12 4, 0 8" fill={selectedColor} />
-              </marker>
-            </defs>
-            <line
-              x1={currentArrow.startX}
-              y1={currentArrow.startY}
-              x2={currentArrow.endX}
-              y2={currentArrow.endY}
-              stroke={selectedColor}
-              strokeWidth={Math.max(4, Math.round(canvasRef.current.width * 0.0035))}
-              strokeLinecap="round"
-              markerEnd="url(#preview-arrowhead)"
+          <div className="relative inline-flex items-center justify-center max-w-full rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
+            <canvas
+              ref={canvasRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              style={{ cursor: hoverCursor }}
+              className="block max-w-full max-h-[620px] object-contain rounded-xl"
             />
-          </svg>
-        )}
 
-        {/* Live Dragging Box Overlay */}
-        {dragMode === 'new' && currentBox && canvasRef.current && (
-          <div
-            style={{
-              position: 'absolute',
-              left: `${(currentBox.x / canvasRef.current.width) * 100}%`,
-              top: `${(currentBox.y / canvasRef.current.height) * 100}%`,
-              width: `${(currentBox.w / canvasRef.current.width) * 100}%`,
-              height: `${(currentBox.h / canvasRef.current.height) * 100}%`,
-              border: `2px dashed ${
-                activeTool === 'crop'
-                  ? '#F59E0B'
-                  : activeTool === 'blur'
-                  ? '#A855F7'
-                  : selectedColor
-              }`,
-              backgroundColor:
-                activeTool === 'crop'
-                  ? 'rgba(245, 158, 11, 0.2)'
-                  : activeTool === 'blur'
-                  ? 'rgba(168, 85, 247, 0.2)'
-                  : selectedColor + '20',
-              pointerEvents: 'none'
-            }}
-          />
-        )}
+            {/* Live Dragging Arrow Preview Overlay */}
+            {dragMode === 'new-arrow' && currentArrow && canvasRef.current && (
+              <svg
+                className="absolute inset-0 pointer-events-none w-full h-full"
+                viewBox={`0 0 ${canvasRef.current.width} ${canvasRef.current.height}`}
+              >
+                <defs>
+                  <marker
+                    id="preview-arrowhead"
+                    markerWidth="12"
+                    markerHeight="8"
+                    refX="10"
+                    refY="4"
+                    orient="auto"
+                  >
+                    <polygon points="0 0, 12 4, 0 8" fill={selectedColor} />
+                  </marker>
+                </defs>
+                <line
+                  x1={currentArrow.startX}
+                  y1={currentArrow.startY}
+                  x2={currentArrow.endX}
+                  y2={currentArrow.endY}
+                  stroke={selectedColor}
+                  strokeWidth={Math.max(4, Math.round(canvasRef.current.width * 0.0035))}
+                  strokeLinecap="round"
+                  markerEnd="url(#preview-arrowhead)"
+                />
+              </svg>
+            )}
 
-        {/* Waiting for Crop Confirmation Overlay */}
-        {cropSelection && canvasRef.current && (
-          <div
-            style={{
-              position: 'absolute',
-              left: `${(cropSelection.x / canvasRef.current.width) * 100}%`,
-              top: `${(cropSelection.y / canvasRef.current.height) * 100}%`,
-              width: `${(cropSelection.w / canvasRef.current.width) * 100}%`,
-              height: `${(cropSelection.h / canvasRef.current.height) * 100}%`,
-              border: '2px solid #F59E0B',
-              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-              pointerEvents: 'none'
-            }}
-          />
+            {/* Live Dragging Box Overlay */}
+            {dragMode === 'new' && currentBox && canvasRef.current && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${(currentBox.x / canvasRef.current.width) * 100}%`,
+                  top: `${(currentBox.y / canvasRef.current.height) * 100}%`,
+                  width: `${(currentBox.w / canvasRef.current.width) * 100}%`,
+                  height: `${(currentBox.h / canvasRef.current.height) * 100}%`,
+                  border: `2px dashed ${
+                    activeTool === 'crop'
+                      ? '#F59E0B'
+                      : activeTool === 'blur'
+                      ? '#A855F7'
+                      : selectedColor
+                  }`,
+                  backgroundColor:
+                    activeTool === 'crop'
+                      ? 'rgba(245, 158, 11, 0.2)'
+                      : activeTool === 'blur'
+                      ? 'rgba(168, 85, 247, 0.2)'
+                      : selectedColor + '20',
+                  pointerEvents: 'none'
+                }}
+              />
+            )}
+
+            {/* Waiting for Crop Confirmation Overlay */}
+            {cropSelection && canvasRef.current && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${(cropSelection.x / canvasRef.current.width) * 100}%`,
+                  top: `${(cropSelection.y / canvasRef.current.height) * 100}%`,
+                  width: `${(cropSelection.w / canvasRef.current.width) * 100}%`,
+                  height: `${(cropSelection.h / canvasRef.current.height) * 100}%`,
+                  border: '2px solid #F59E0B',
+                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+                  pointerEvents: 'none'
+                }}
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Lock, KeyRound, X, CheckCircle2, AlertCircle, User, Users } from 'lucide-react';
+import { Lock, KeyRound, X, CheckCircle2, AlertCircle, User } from 'lucide-react';
 import {
   loginWithPin,
   getStoredEditorName,
@@ -134,23 +134,6 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess }
                 <AlertCircle size={12} className="shrink-0" /> PIN salah atau tidak terdaftar.
               </span>
             )}
-          </div>
-
-          {/* Daftar Tim yang Terdaftar di Database */}
-          <div className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1.5">
-            <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
-              <Users size={12} className="text-[#FF5C35]" /> Tim yang Didukung (Database):
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {teamList.map((team) => (
-                <span
-                  key={team.id}
-                  className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-medium text-slate-600"
-                >
-                  {team.name}
-                </span>
-              ))}
-            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1">

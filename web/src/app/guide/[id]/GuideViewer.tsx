@@ -19,6 +19,7 @@ import {
   Edit,
   Lock,
   Globe,
+  Tag,
   CheckCircle2
 } from 'lucide-react';
 import { exportToWord } from '@/lib/exporters/docxExporter';
@@ -46,16 +47,47 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [descInput, setDescInput] = useState(initialWorkflow.description || '');
   const [isSavingDesc, setIsSavingDesc] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'editor' | 'inlineDesc' | null>(null);
+
+  // Inline Target URL Editing
+  const [isEditingTargetUrl, setIsEditingTargetUrl] = useState(false);
+  const [targetUrlInput, setTargetUrlInput] = useState(initialWorkflow.targetUrl || '');
+  const [isSavingTargetUrl, setIsSavingTargetUrl] = useState(false);
+
+  // Inline Category Editing
+  const [isEditingCategory, setIsEditingCategory] = useState(false);
+  const [categoryInput, setCategoryInput] = useState(initialWorkflow.category || 'General SOP');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+
+  const [pendingAction, setPendingAction] = useState<'editor' | 'inlineDesc' | 'targetUrl' | 'category' | null>(null);
 
   useEffect(() => {
     setWorkflow(initialWorkflow);
     setDescInput(initialWorkflow.description || '');
+    setTargetUrlInput(initialWorkflow.targetUrl || '');
+    setCategoryInput(initialWorkflow.category || 'General SOP');
   }, [initialWorkflow]);
 
   useEffect(() => {
     setIsAuth(isEditorAuthenticated());
   }, []);
+
+  const getAuthorSignature = () => {
+    const activeTeam = getActiveTeam();
+    const editor = getStoredEditorName();
+    let authorSignature = workflow.lastEditedBy || '';
+    if (editor && activeTeam) {
+      if (editor.trim().toLowerCase() === activeTeam.name.trim().toLowerCase()) {
+        authorSignature = editor.trim();
+      } else {
+        authorSignature = `${editor.trim()} (${activeTeam.name})`;
+      }
+    } else if (activeTeam) {
+      authorSignature = activeTeam.name;
+    } else if (editor) {
+      authorSignature = editor.trim();
+    }
+    return authorSignature;
+  };
 
   const handleEditClick = () => {
     if (isEditorAuthenticated()) {
@@ -76,11 +108,39 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
     }
   };
 
+  const handleStartEditTargetUrl = () => {
+    if (isEditorAuthenticated()) {
+      setTargetUrlInput(workflow.targetUrl || '');
+      setIsEditingTargetUrl(true);
+    } else {
+      setPendingAction('targetUrl');
+      setShowPinModal(true);
+    }
+  };
+
+  const handleStartEditCategory = () => {
+    if (isEditorAuthenticated()) {
+      setCategoryInput(workflow.category || 'General SOP');
+      setIsEditingCategory(true);
+    } else {
+      setPendingAction('category');
+      setShowPinModal(true);
+    }
+  };
+
   const handlePinSuccess = () => {
     setShowPinModal(false);
     setIsAuth(true);
     if (pendingAction === 'inlineDesc') {
       setIsEditingDesc(true);
+      setPendingAction(null);
+    } else if (pendingAction === 'targetUrl') {
+      setTargetUrlInput(workflow.targetUrl || '');
+      setIsEditingTargetUrl(true);
+      setPendingAction(null);
+    } else if (pendingAction === 'category') {
+      setCategoryInput(workflow.category || 'General SOP');
+      setIsEditingCategory(true);
       setPendingAction(null);
     } else {
       router.push(`/guide/${workflow.id}/edit`);
@@ -89,20 +149,7 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
 
   const handleSaveDescription = async () => {
     setIsSavingDesc(true);
-    const activeTeam = getActiveTeam();
-    const editor = getStoredEditorName();
-    let authorSignature = workflow.lastEditedBy || '';
-    if (editor && activeTeam) {
-      if (editor.trim().toLowerCase() === activeTeam.name.trim().toLowerCase()) {
-        authorSignature = editor.trim();
-      } else {
-        authorSignature = `${editor.trim()} (${activeTeam.name})`;
-      }
-    } else if (activeTeam) {
-      authorSignature = activeTeam.name;
-    } else if (editor) {
-      authorSignature = editor.trim();
-    }
+    const authorSignature = getAuthorSignature();
 
     const updatedWorkflow: Workflow = {
       ...workflow,
@@ -129,6 +176,70 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
       alert('Terjadi kesalahan saat menyimpan deskripsi.');
     } finally {
       setIsSavingDesc(false);
+    }
+  };
+
+  const handleSaveTargetUrl = async () => {
+    setIsSavingTargetUrl(true);
+    const authorSignature = getAuthorSignature();
+
+    const updatedWorkflow: Workflow = {
+      ...workflow,
+      targetUrl: targetUrlInput.trim(),
+      lastEditedBy: authorSignature,
+      updatedAt: Date.now()
+    };
+
+    try {
+      const res = await fetch(`/api/workflows/${workflow.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedWorkflow)
+      });
+      if (res.ok) {
+        setWorkflow(updatedWorkflow);
+        setIsEditingTargetUrl(false);
+        router.refresh();
+      } else {
+        alert('Gagal menyimpan tautan target ke server.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan saat menyimpan tautan target.');
+    } finally {
+      setIsSavingTargetUrl(false);
+    }
+  };
+
+  const handleSaveCategory = async () => {
+    setIsSavingCategory(true);
+    const authorSignature = getAuthorSignature();
+
+    const updatedWorkflow: Workflow = {
+      ...workflow,
+      category: categoryInput.trim() || 'General SOP',
+      lastEditedBy: authorSignature,
+      updatedAt: Date.now()
+    };
+
+    try {
+      const res = await fetch(`/api/workflows/${workflow.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedWorkflow)
+      });
+      if (res.ok) {
+        setWorkflow(updatedWorkflow);
+        setIsEditingCategory(false);
+        router.refresh();
+      } else {
+        alert('Gagal menyimpan kategori ke server.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan saat menyimpan kategori.');
+    } finally {
+      setIsSavingCategory(false);
     }
   };
 
@@ -258,13 +369,68 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8 flex flex-col gap-8">
         {/* Document Header Card */}
         <header className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded-full">
               {workflow.steps.length} Langkah
             </span>
             <span className="text-xs text-slate-400 font-medium">
               Dipublikasikan: {new Date(workflow.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
+
+            {/* Category Badge & Inline Edit */}
+            {isEditingCategory ? (
+              <div className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 rounded-lg px-2 py-1 shadow-xs">
+                <Tag size={12} className="text-[#FF5C35] shrink-0" />
+                <input
+                  list="guide-category-suggestions"
+                  value={categoryInput}
+                  onChange={(e) => setCategoryInput(e.target.value)}
+                  placeholder="Kategori..."
+                  className="text-xs font-semibold px-2 py-0.5 rounded bg-white border border-slate-300 focus:border-[#FF5C35] focus:outline-none w-36 sm:w-44 text-slate-800"
+                />
+                <datalist id="guide-category-suggestions">
+                  <option value="General SOP" />
+                  <option value="Human Resources" />
+                  <option value="Finance & Accounting" />
+                  <option value="IT & Operations" />
+                  <option value="Customer Support" />
+                  <option value="Sales & Marketing" />
+                </datalist>
+                <button
+                  type="button"
+                  onClick={handleSaveCategory}
+                  disabled={isSavingCategory}
+                  className="px-2.5 py-1 bg-[#FF5C35] hover:bg-[#E54A24] text-white text-[11px] font-bold rounded flex items-center gap-1 disabled:opacity-50 transition-colors shadow-xs"
+                  title="Simpan kategori"
+                >
+                  {isSavingCategory ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                  <span>Simpan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryInput(workflow.category || 'General SOP');
+                    setIsEditingCategory(false);
+                  }}
+                  className="px-2 py-1 text-slate-500 hover:text-slate-800 text-[11px] font-semibold rounded hover:bg-slate-200 transition-colors"
+                >
+                  Batal
+                </button>
+              </div>
+            ) : (
+              <div className="group/cat flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-200/80 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-full transition-colors">
+                <Tag size={11} className="text-slate-500 shrink-0" />
+                <span>{workflow.category || 'General SOP'}</span>
+                <button
+                  type="button"
+                  onClick={handleStartEditCategory}
+                  className="text-slate-400 hover:text-[#FF5C35] transition-colors ml-0.5"
+                  title="Ubah Kategori (memerlukan PIN editor)"
+                >
+                  <Edit size={11} />
+                </button>
+              </div>
+            )}
 
             {/* Internal Only: Editor Log Badge (Hidden from public audience) */}
             {isAuth && workflow.lastEditedBy && (
@@ -337,10 +503,50 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
             </div>
           )}
 
-          {workflow.targetUrl && (
-            <div className="pt-4 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200/80 px-3.5 py-2 rounded-xl">
-                <Globe size={13} className="text-slate-400 flex-shrink-0" />
+          {/* Target URL with Edit Capability (Protected by Team PIN) */}
+          {isEditingTargetUrl ? (
+            <div className="pt-3 flex flex-col gap-2.5 p-3.5 bg-purple-50/70 border border-purple-200 rounded-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                  <Globe size={13} className="text-purple-600" /> Edit Link Target Aplikasi / Halaman:
+                </span>
+                <span className="text-[11px] text-slate-500 hidden sm:inline">
+                  Contoh: https://portal.internal.com/modul
+                </span>
+              </div>
+              <input
+                type="url"
+                value={targetUrlInput}
+                onChange={(e) => setTargetUrlInput(e.target.value)}
+                placeholder="https://..."
+                className="w-full text-xs text-slate-800 bg-white border border-slate-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 rounded-lg p-2.5 outline-none font-medium transition-all shadow-xs"
+              />
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetUrlInput(workflow.targetUrl || '');
+                    setIsEditingTargetUrl(false);
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveTargetUrl}
+                  disabled={isSavingTargetUrl}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                >
+                  {isSavingTargetUrl ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                  <span>Simpan Link</span>
+                </button>
+              </div>
+            </div>
+          ) : workflow.targetUrl ? (
+            <div className="pt-3 flex flex-wrap items-center gap-3">
+              <div className="group/target flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200/80 px-3.5 py-2 rounded-xl hover:border-purple-300 transition-colors">
+                <Globe size={13} className="text-purple-600 flex-shrink-0" />
                 <span className="text-slate-400 font-medium">Target:</span>
                 <a
                   href={workflow.targetUrl}
@@ -352,7 +558,27 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
                   {workflow.targetUrl}
                   <ExternalLink size={11} className="flex-shrink-0 text-slate-400" />
                 </a>
+                <button
+                  type="button"
+                  onClick={handleStartEditTargetUrl}
+                  className="opacity-70 group-hover/target:opacity-100 text-slate-400 hover:text-purple-700 transition-all p-1 hover:bg-purple-50 rounded ml-1"
+                  title="Edit tautan target aplikasi (memerlukan PIN editor)"
+                >
+                  <Edit size={12} />
+                </button>
               </div>
+            </div>
+          ) : (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleStartEditTargetUrl}
+                className="text-xs text-slate-400 hover:text-purple-700 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all font-medium"
+                title="Tambahkan link target aplikasi (memerlukan PIN editor)"
+              >
+                <Globe size={13} className="text-slate-400" />
+                <span>+ Tambah Link Target URL</span>
+              </button>
             </div>
           )}
         </header>
@@ -461,12 +687,33 @@ export const GuideViewer: React.FC<GuideViewerProps> = ({ workflow: initialWorkf
               </div>
             </div>
 
-            {/* Description & Callout */}
-            {workflow.steps[activeStepIndex]?.description && (
-              <div className="px-6 py-3 bg-slate-50 border-b border-slate-100">
-                <p className="text-sm text-slate-700">
-                  {workflow.steps[activeStepIndex].description}
-                </p>
+            {/* Description & Callout (TIPS, WARNING, INFO) */}
+            {(workflow.steps[activeStepIndex]?.description ||
+              (workflow.steps[activeStepIndex]?.callout &&
+                workflow.steps[activeStepIndex].callout?.type !== 'none' &&
+                workflow.steps[activeStepIndex].callout?.text)) && (
+              <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-100 flex flex-col gap-2.5">
+                {workflow.steps[activeStepIndex]?.description && (
+                  <p className="text-sm text-slate-700 leading-relaxed">
+                    {workflow.steps[activeStepIndex].description}
+                  </p>
+                )}
+                {workflow.steps[activeStepIndex]?.callout &&
+                  workflow.steps[activeStepIndex].callout?.type !== 'none' &&
+                  workflow.steps[activeStepIndex].callout?.text && (
+                    <div
+                      className={`p-3 rounded-xl border text-xs font-medium flex items-start gap-2 ${
+                        workflow.steps[activeStepIndex].callout!.type === 'tip'
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : workflow.steps[activeStepIndex].callout!.type === 'warning'
+                            ? 'bg-amber-50 border-amber-200 text-amber-800'
+                            : 'bg-blue-50 border-blue-200 text-blue-800'
+                      }`}
+                    >
+                      <Sparkles size={14} className="flex-shrink-0 mt-0.5" />
+                      <span>{workflow.steps[activeStepIndex].callout!.text}</span>
+                    </div>
+                  )}
               </div>
             )}
 
