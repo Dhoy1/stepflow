@@ -3,6 +3,7 @@ import path from 'path';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { pool, isMySQLConfigured } from './mysql';
 import type { Workflow, TeamProfile } from '../types';
+import { extractWorkflowId } from './slug';
 
 const dataDir = path.join(process.cwd(), 'data');
 const dataFile = path.join(dataDir, 'workflows.json');
@@ -41,7 +42,8 @@ function parseJsonSafe(val: any) {
   }
 }
 
-export async function getWorkflowById(id: string): Promise<Workflow | null> {
+export async function getWorkflowById(rawId: string): Promise<Workflow | null> {
+  const id = extractWorkflowId(rawId);
   // 1. Prioritas Utama: MySQL (Laragon / Hostinger)
   if (isMySQLConfigured && pool) {
     try {
@@ -193,7 +195,8 @@ export async function getAllWorkflows(): Promise<Workflow[]> {
   return list.sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export async function deleteWorkflowFromCloud(id: string): Promise<boolean> {
+export async function deleteWorkflowFromCloud(rawId: string): Promise<boolean> {
+  const id = extractWorkflowId(rawId);
   // 1. Prioritas Utama: MySQL
   if (isMySQLConfigured && pool) {
     await pool.execute('DELETE FROM workflows WHERE id = ?', [id]);

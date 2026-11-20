@@ -154,7 +154,8 @@ export async function exportToPptx(workflow: Workflow): Promise<void> {
         fill: { color: calloutBg },
         line: { color: calloutColor, width: 1 }
       });
-      slide.addText(`${calloutType}: ${step.callout.text}`, {
+      const calloutLabel = isWarning ? 'PERINGATAN' : isTip ? 'TIPS' : 'INFO';
+      slide.addText(`[${calloutLabel}]  ${step.callout.text}`, {
         x: calloutX + 0.12,
         y: calloutY,
         w: calloutW - 0.24,

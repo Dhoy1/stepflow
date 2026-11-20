@@ -42,8 +42,9 @@ export const Editor: React.FC = () => {
   const [shareModalUrl, setShareModalUrl] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [apiUrl, setApiUrl] = useState<string>(() => {
-    const saved = localStorage.getItem('stepflow_api_url');
-    if (saved && !saved.includes('localhost:3000')) return saved;
+    try {
+      localStorage.removeItem('stepflow_api_url');
+    } catch { }
     return DEFAULT_WORKFLOWS_API;
   });
   const [editorName, setEditorName] = useState<string>(() => {
@@ -329,8 +330,13 @@ export const Editor: React.FC = () => {
               />
               <input
                 type="text"
-                value={workflow.category || 'Umum'}
+                value={workflow.category !== undefined ? workflow.category : ''}
                 onChange={(e) => handleUpdateWorkflow({ category: e.target.value })}
+                onBlur={() => {
+                  if (!workflow.category || !workflow.category.trim()) {
+                    handleUpdateWorkflow({ category: 'Umum' });
+                  }
+                }}
                 title="Klik untuk mengubah kategori"
                 className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 hover:border-orange-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 max-w-[140px]"
                 placeholder="Kategori..."

@@ -241,13 +241,13 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
       {/* Top Studio Navbar */}
       <nav className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 flex items-center justify-between shrink-0 z-40 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
-          <Link
+          <a
             href={`/guide/${workflow.id}`}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-medium px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <ArrowLeft size={15} />
             <span className="hidden sm:inline">Kembali</span>
-          </Link>
+          </a>
           <div className="h-5 w-[1px] bg-slate-200" />
           <div className="flex items-center gap-2 min-w-0">
             <span className="bg-orange-100 text-orange-700 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wider">
@@ -286,8 +286,13 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
             <Tag size={13} className="text-slate-400 shrink-0" />
             <input
               list="webeditor-categories"
-              value={workflow.category || 'General SOP'}
-              onChange={(e) => handleUpdateWorkflow({ category: e.target.value }, true)}
+              value={workflow.category !== undefined ? workflow.category : ''}
+              onChange={(e) => handleUpdateWorkflow({ category: e.target.value })}
+              onBlur={() => {
+                if (!workflow.category || !workflow.category.trim()) {
+                  handleUpdateWorkflow({ category: 'General SOP' });
+                }
+              }}
               placeholder="Kategori..."
               title="Pilih atau ketik kategori baru"
               className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none w-28 sm:w-36 hover:bg-white focus:bg-white rounded px-1 transition-all"
@@ -329,13 +334,13 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
           </button>
 
           {/* View Guide Button */}
-          <Link
+          <a
             href={`/guide/${workflow.id}`}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all"
           >
             <Eye size={14} />
             <span className="hidden sm:inline">Lihat Hasil</span>
-          </Link>
+          </a>
 
           {/* Lock / Exit Editor */}
           <button
@@ -625,47 +630,128 @@ export const WebEditor: React.FC<WebEditorProps> = ({ initialWorkflow }) => {
 
                   {/* Callout Notes */}
                   <div className="flex flex-col gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-orange-500" /> Catatan Tambahan (Callout)
+                    <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles size={13} className="text-orange-500" /> Catatan Tambahan (Callout)
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        Tips, Peringatan, atau Informasi
+                      </span>
                     </label>
 
-                    <div className="grid grid-cols-4 gap-1">
-                      {(['none', 'tip', 'info', 'warning'] as const).map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => {
-                            const newCallout = {
-                              type,
-                              text: currentStep.callout?.text || ''
-                            };
-                            handleUpdateStepById(currentStep.id, { callout: newCallout });
-                          }}
-                          className={`py-1 text-[10px] font-bold rounded-lg border capitalize transition-all ${
-                            (currentStep.callout?.type || 'none') === type
-                              ? 'bg-white border-orange-500 text-orange-600 shadow-xs'
-                              : 'border-slate-200 text-slate-500 hover:bg-white'
-                          }`}
-                        >
-                          {type === 'none' ? 'Tidak' : type}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {(['none', 'tip', 'info', 'warning'] as const).map((type) => {
+                        const isSelected = (currentStep.callout?.type || 'none') === type;
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => {
+                              const newCallout = {
+                                type,
+                                text: currentStep.callout?.text || ''
+                              };
+                              handleUpdateStepById(currentStep.id, { callout: newCallout });
+                            }}
+                            className={`py-1.5 px-1 text-[11px] font-bold rounded-xl border flex items-center justify-center gap-1 transition-all ${
+                              isSelected
+                                ? type === 'tip'
+                                  ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-xs'
+                                  : type === 'warning'
+                                    ? 'bg-amber-50 border-amber-500 text-amber-800 shadow-xs'
+                                    : type === 'info'
+                                      ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-xs'
+                                      : 'bg-white border-slate-400 text-slate-800 shadow-xs'
+                                : 'border-slate-200 text-slate-500 hover:bg-white hover:text-slate-700'
+                            }`}
+                          >
+                            {type === 'none' && <span>Tidak Ada</span>}
+                            {type === 'tip' && (
+                              <>
+                                <Lightbulb size={12} className={isSelected ? 'text-emerald-600' : 'text-slate-400'} />
+                                <span>Tips</span>
+                              </>
+                            )}
+                            {type === 'info' && (
+                              <>
+                                <Info size={12} className={isSelected ? 'text-blue-600' : 'text-slate-400'} />
+                                <span>Info</span>
+                              </>
+                            )}
+                            {type === 'warning' && (
+                              <>
+                                <AlertTriangle size={12} className={isSelected ? 'text-amber-600' : 'text-slate-400'} />
+                                <span>Peringatan</span>
+                              </>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {currentStep.callout?.type && currentStep.callout.type !== 'none' && (
-                      <textarea
-                        rows={2}
-                        value={currentStep.callout.text || ''}
-                        onChange={(e) => {
-                          const newCallout = {
-                            type: currentStep.callout?.type || 'tip',
-                            text: e.target.value
-                          };
-                          handleUpdateStepById(currentStep.id, { callout: newCallout });
-                        }}
-                        placeholder={`Tulis catatan ${currentStep.callout.type}...`}
-                        className="p-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-orange-500 mt-1 resize-none"
-                      />
+                      <div className="flex flex-col gap-1.5 mt-1">
+                        <textarea
+                          rows={2}
+                          value={currentStep.callout.text || ''}
+                          onChange={(e) => {
+                            const newCallout = {
+                              type: currentStep.callout?.type || 'tip',
+                              text: e.target.value
+                            };
+                            handleUpdateStepById(currentStep.id, { callout: newCallout });
+                          }}
+                          placeholder={
+                            currentStep.callout.type === 'tip'
+                              ? 'Tuliskan tips praktis untuk langkah ini...'
+                              : currentStep.callout.type === 'warning'
+                                ? 'Tuliskan hal penting atau peringatan bahaya/keamanan...'
+                                : 'Tuliskan informasi atau catatan penting...'
+                          }
+                          className="p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none shadow-2xs leading-relaxed"
+                        />
+
+                        {/* Live Callout Preview in Editor */}
+                        {currentStep.callout.text && (
+                          <div
+                            className={`p-2.5 rounded-xl border text-xs flex items-start gap-2 shadow-2xs mt-0.5 ${
+                              currentStep.callout.type === 'tip'
+                                ? 'bg-emerald-50/90 border-emerald-200 text-emerald-900'
+                                : currentStep.callout.type === 'warning'
+                                  ? 'bg-amber-50/90 border-amber-200 text-amber-900'
+                                  : 'bg-blue-50/90 border-blue-200 text-blue-900'
+                            }`}
+                          >
+                            {currentStep.callout.type === 'tip' && (
+                              <Lightbulb size={14} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                            )}
+                            {currentStep.callout.type === 'warning' && (
+                              <AlertTriangle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                            )}
+                            {currentStep.callout.type === 'info' && (
+                              <Info size={14} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                            )}
+                            <div className="flex-1 flex flex-wrap items-center gap-1.5 leading-relaxed">
+                              <span
+                                className={`font-extrabold uppercase tracking-wide text-[9px] px-1.5 py-0.2 rounded shrink-0 ${
+                                  currentStep.callout.type === 'tip'
+                                    ? 'bg-emerald-200/80 text-emerald-900'
+                                    : currentStep.callout.type === 'warning'
+                                      ? 'bg-amber-200/80 text-amber-900'
+                                      : 'bg-blue-200/80 text-blue-900'
+                                }`}
+                              >
+                                {currentStep.callout.type === 'tip'
+                                  ? 'TIPS'
+                                  : currentStep.callout.type === 'warning'
+                                    ? 'PERINGATAN'
+                                    : 'INFO'}
+                              </span>
+                              <span className="font-medium text-slate-800">{currentStep.callout.text}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

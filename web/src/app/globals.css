@@ -12,3 +12,116 @@ body {
   background: var(--background);
 }
 
+/*CSS For Translation*/
+iframe.skiptranslate,
+iframe.goog-te-banner-frame,
+.goog-te-banner-frame,
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
+.VIpgJd-ZVi9od-vH1Gmf,
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0px !important;
+  width: 0px !important;
+  border: none !important;
+}
+
+html,
+body {
+  top: 0px !important;
+  position: static !important;
+  margin-top: 0px !important;
+}
+
+.goog-te-gadget {
+  position: fixed !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+.goog-text-highlight {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* ====================================================
+   SMOOTH TRANSLATION TRANSITION
+   Efek fade + blur halus saat berganti bahasa
+   ==================================================== */
+
+/* Overlay gelap transparan saat proses terjemahan berjalan */
+body.page-translating::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(248, 250, 252, 0.6);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 9998;
+  pointer-events: all;
+  animation: fadeInOverlay 0.2s ease forwards;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Spinner loading di tengah layar saat translating */
+body.page-translating::after {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 92, 53, 0.2);
+  border-top-color: #FF5C35;
+  border-radius: 50%;
+  animation: spinCenter 0.6s linear infinite;
+  z-index: 9999;
+}
+
+@keyframes spinCenter {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Semua konten halaman meredup halus */
+body.page-translating main,
+body.page-translating section,
+body.page-translating article,
+body.page-translating .translate-fade-target {
+  opacity: 0.4 !important;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+/* Tombol language switcher TIDAK ikut meredup */
+body.page-translating .notranslate {
+  opacity: 1 !important;
+  pointer-events: all !important;
+  position: relative;
+  z-index: 10000;
+}
+
+/* Transisi balik saat overlay hilang */
+main, section, article {
+  transition: opacity 0.3s ease;
+}
+
+/* Mobile & Touch UX Enhancements */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import {
   FileText,
@@ -15,10 +15,13 @@ import {
   Filter,
   Lock,
   Unlock,
-  Edit
+  Edit,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { isEditorAuthenticated, logoutEditor, getActiveTeam, getStoredEditorName, type TeamProfile } from '@/lib/auth';
 import { PinModal } from './PinModal';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import type { Workflow } from '@/types';
 
 interface DashboardViewProps {
@@ -33,6 +36,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
   const [activeTeam, setActiveTeam] = useState<TeamProfile | null>(null);
   const [editorName, setEditorName] = useState<string>('');
   const [showPinModal, setShowPinModal] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const authStatus = isEditorAuthenticated();
@@ -43,8 +48,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
     }
   }, []);
 
+  // Menutup dropdown saat klik di luar area
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Extract all unique categories
   const categories = ['Semua', ...Array.from(new Set(workflows.map((w) => w.category || 'Umum')))];
+
+  // Menghitung jumlah panduan di tiap kategori
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { Semua: workflows.length };
+    workflows.forEach((w) => {
+      const cat = w.category || 'Umum';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [workflows]);
 
   // Filter workflows
   const filteredWorkflows = workflows.filter((w) => {
@@ -88,6 +114,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
           <span className="text-xs bg-orange-50 text-orange-700 font-semibold px-3 py-1.5 rounded-full border border-orange-200">
             {workflows.length} Panduan Tersedia
           </span>
+
+          {/* tombol pilihan bahasa */}
+          <LanguageSwitcher />
 
           {/* Team PIN Access */}
           {isAuth ? (
@@ -148,22 +177,106 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
 
       {/* Main Content Area */}
       <main className="max-w-6xl w-full mx-auto p-6 sm:p-12 flex-1 flex flex-col gap-6">
-        {/* Controls: Search & Category Pills */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${selectedCategory === cat
-                  ? 'bg-[#FF5C35] text-white shadow-sm'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+        {/* Controls: Search & Category Dropdown */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 relative z-30">
+          {/* Category Dropdown (PILIH PANDUAN) */}
+          <div className="relative inline-block" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen((prev) => !prev)}
+              className={`flex items-center justify-between sm:justify-start gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border shadow-2xs w-full sm:w-auto ${
+                selectedCategory !== 'Semua'
+                  ? 'bg-orange-50/90 text-[#FF5C35] border-orange-200 ring-2 ring-orange-500/10'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
+              }`}
+              title="Pilih Kategori Panduan"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Layers
+                  size={14}
+                  className={`shrink-0 ${selectedCategory !== 'Semua' ? 'text-[#FF5C35]' : 'text-slate-400'}`}
+                />
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">
+                  PILIH PANDUAN:
+                </span>
+                <span className="truncate max-w-[170px] sm:max-w-[260px] font-extrabold text-slate-800">
+                  {selectedCategory}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                    selectedCategory !== 'Semua'
+                      ? 'bg-[#FF5C35] text-white'
+                      : 'bg-slate-100 text-slate-500'
                   }`}
-              >
-                {cat}
-              </button>
-            ))}
+                >
+                  {categoryCounts[selectedCategory] || 0}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`text-slate-400 transition-transform duration-200 ${
+                    isDropdownOpen ? 'rotate-180 text-slate-600' : ''
+                  }`}
+                />
+              </div>
+            </button>
+
+            {/* Dropdown Floating Menu */}
+            {isDropdownOpen && (
+              <div className="absolute left-0 mt-2 w-full sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 max-h-72 overflow-y-auto">
+                <div className="px-3.5 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                  <span>Daftar Kategori Panduan</span>
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    {categories.length - 1} Kategori
+                  </span>
+                </div>
+
+                <div className="py-1">
+                  {categories.map((cat) => {
+                    const isSelected = selectedCategory === cat;
+                    const count = categoryCounts[cat] || 0;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(cat);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs text-left transition-colors ${
+                          isSelected
+                            ? 'bg-orange-50/90 text-[#FF5C35] font-bold'
+                            : 'text-slate-700 hover:bg-slate-50 font-medium'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate pr-2">
+                          <div
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                              isSelected ? 'bg-[#FF5C35]' : 'bg-slate-300'
+                            }`}
+                          />
+                          <span className="truncate">{cat}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                              isSelected
+                                ? 'bg-orange-100 text-[#FF5C35]'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {count}
+                          </span>
+                          {isSelected && <Check size={13} className="text-[#FF5C35] shrink-0" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Search Box */}
@@ -174,7 +287,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
               placeholder="Cari judul panduan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-2xs"
             />
           </div>
         </div>
@@ -243,19 +356,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ initialWorkflows }
                   </span>
                   <div className="flex items-center gap-3">
                     {isAuth && (
-                      <Link
+                      <a
                         href={`/guide/${wf.id}/edit`}
                         className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-orange-600"
                       >
                         <Edit size={12} /> Edit
-                      </Link>
+                      </a>
                     )}
-                    <Link
+                    <a
                       href={`/guide/${wf.id}`}
                       className="flex items-center gap-1 text-xs font-bold text-[#FF5C35] hover:underline"
                     >
                       Buka Panduan <ArrowRight size={13} />
-                    </Link>
+                    </a>
                   </div>
                 </div>
               </div>

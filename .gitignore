@@ -27,3 +27,6 @@ Thumbs.db
 
 # Extension extracted folder
 stepflow-extension (extract FILES)/
+
+# Deploy ZIP
+web.zip

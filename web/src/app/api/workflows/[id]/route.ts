@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkflowById, deleteWorkflowFromCloud, saveWorkflowToCloud } from '@/lib/serverStore';
+import { extractWorkflowId } from '@/lib/slug';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,9 +30,10 @@ export async function PUT(
 ) {
   try {
     const data = await req.json();
-    if (!data.id) data.id = params.id;
+    const cleanId = extractWorkflowId(params.id);
+    data.id = data.id ? extractWorkflowId(data.id) : cleanId;
     await saveWorkflowToCloud(data);
-    return NextResponse.json({ success: true, id: params.id }, { headers: corsHeaders });
+    return NextResponse.json({ success: true, id: cleanId }, { headers: corsHeaders });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500, headers: corsHeaders });
   }

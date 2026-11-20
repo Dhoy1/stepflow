@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { TopProgressBar } from '@/components/TopProgressBar';
+import { TranslateCrashGuard } from '@/components/TranslateCrashGuard';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({
         <link rel="icon" href="/icon.png" sizes="any" />
       </head>
       <body className="antialiased">
+        <TranslateCrashGuard />
         <Suspense fallback={null}>
           <TopProgressBar />
         </Suspense>
